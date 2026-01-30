@@ -116,6 +116,32 @@ class	Snake
 		std::vector<SnakePart>	_parts;
 };
 
+/*
+ *
+ *	Stores all of the game's tile infos.
+ *	It is used to store only the basic tiles (food, walls, ...)
+ *	
+ *	The snake's collisions are checked by checking the tile thats at the same position as its head.
+ *
+ *	TODO:
+ *		Add a method to get the snake's vision.
+ *		Add apple spawn methods
+ *
+ *
+ * */
+class	Map
+{
+	public:
+			Map(Vec2i size)
+			{
+				_size = size;
+				_map.resize(_size.x * _size.y);
+			}
+	private:
+			Vec2i			_size;
+			std::vector<Tile>	_tiles;
+}
+
 class	Game
 {
 	public:
@@ -123,8 +149,8 @@ class	Game
 		{
 			_size = size + 1;
 
-			_tiles.reserve(_size.x * _size.y);
-			_map.reserve(_size.x * _size.y);
+			_tiles.resize(_size.x * _size.y);
+			_map.resize(_size.x * _size.y);
 
 			_generateWalls();
 			_spawnSnake();
@@ -140,7 +166,7 @@ class	Game
 
 		bool	isInBounds(Vec2i pos)
 		{
-			return (!(pos.x < 0 || pos.y < 0 || pos.x >= _size.x || pos.y >= _size.y));
+			return (pos.x >= 0 || pos.y >= 0 || pos.x < _size.x || pos.y < _size.y);
 		}
 		void	setTile(Tile tile, Vec2i pos)
 		{
@@ -203,6 +229,16 @@ class	Game
 		Snake length goes to 0
 	+1 Length if snake eats GREEN apple (A new green apple spawns on the board)
 	-1 Length if snake eats RED apple (A new red apple spawns on the board)
+
+
+	I need to inform myself about Q-Learning but rn by idea is this:
+
+		Have a hash map of situation -> moves done -> results
+			When it finds a situation it already knows it checks the moves that it already did in the past and takes the one with the best result
+				I have no idea if that fits the subject but idk I thought abt it.
+			If it cant find a situation:
+				Try to find a similar situation (Would need to find some algo for that)
+				Take random choice to build up its situation table.
 */
 int	main(void)
 {
