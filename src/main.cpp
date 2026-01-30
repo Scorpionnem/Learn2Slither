@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/30 13:07:07 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/30 16:43:42 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,24 +121,16 @@ class	Game
 	public:
 		Game(Vec2i size)
 		{
-			_size = size;
-			_size.x += 1;
-			_size.y += 1;
-			_tiles.reserve(_size.x * _size.y);
+			_size = size + 1;
 
-			for (int x = 0; x < _size.x; x++)
-			{
-				for (int y = 0; y < _size.y; y++)
-				{
-					if (y == 0 || x == 0 || x == _size.x - 1 || y == _size.y - 1)
-						setTile(Tile::WALL, Vec2i(x, y));
-					else
-						setTile(Tile::EMPTY, Vec2i(x, y));
-				}
-			}
+			_tiles.reserve(_size.x * _size.y);
+			_map.reserve(_size.x * _size.y);
+
+			_generateWalls();
+			_spawnSnake();
 
 			printMap();
-			_snake = std::make_unique<Snake>(Direction::RIGHT, Vec2i(0), 1);
+
 			while (1)
 			{
 				_snake->setDirection(static_cast<Direction>(rand() % 3));
@@ -162,6 +154,7 @@ class	Game
 				return (Tile::WALL);
 			return (_tiles[pos.x + pos.y * _size.x]);
 		}
+
 		void	printMap()
 		{
 			for (int x = 0; x < _size.x; x++)
@@ -174,9 +167,29 @@ class	Game
 			}
 		}
 	private:
+		void	_generateWalls()
+		{
+			for (int x = 0; x < _size.x; x++)
+			{
+				for (int y = 0; y < _size.y; y++)
+				{
+					if (y == 0 || x == 0 || x == _size.x - 1 || y == _size.y - 1)
+						setTile(Tile::WALL, Vec2i(x, y));
+					else
+						setTile(Tile::EMPTY, Vec2i(x, y));
+				}
+			}
+		}
+		void	_spawnSnake()
+		{
+			_snake = std::make_unique<Snake>(Direction::RIGHT, Vec2i(0), 1);
+		}
+
 		std::unique_ptr<Snake>	_snake;
-		Vec2i					_size;
 		std::vector<Tile>		_tiles;
+
+		std::vector<Tile>		_map;
+		Vec2i					_size;
 };
 
 /*
