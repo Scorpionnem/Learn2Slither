@@ -6,14 +6,22 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/30 16:43:42 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/30 23:40:10 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <cstdint>
 #include "Vec2.hpp"
+
+using u8 = uint8_t;
+using u16 = uint16_t;
+using u32 = uint32_t;
+
+using i16 = int16_t;
+using i32 = int32_t;
 
 enum class	Tile
 {
@@ -120,7 +128,7 @@ class	Snake
  *
  *	Stores all of the game's tile infos.
  *	It is used to store only the basic tiles (food, walls, ...)
- *	
+ *
  *	The snake's collisions are checked by checking the tile thats at the same position as its head.
  *
  *	TODO:
@@ -142,6 +150,62 @@ class	Map
 			std::vector<Tile>	_tiles;
 };
 
+/*
+	Hash is used to store the current state of the map around the snake's head it can be compressed in a u16 to store in the q-table
+*/
+struct	State
+{
+	enum class	Offset
+	{
+		DIRECTION = 0,
+
+		FOOD_RIGHT = 2,
+		FOOD_LEFT = 3,
+		FOOD_DOWN = 4,
+		FOOD_UP = 5,
+
+		DANGER_RIGHT = 6,
+		DANGER_LEFT = 7,
+		DANGER_DOWN = 8,
+		DANGER_UP = 9,
+	};
+	bool		danger_up = false;
+	bool		danger_down = false;
+	bool		danger_left = false;
+	bool		danger_right = false;
+
+	bool		food_up = false;
+	bool		food_down = false;
+	bool		food_left = false;
+	bool		food_right = false;
+
+	Direction	dir = Direction::RIGHT;
+
+	/*
+		Hashes the state in a u16
+               DU DD DL DR FU FD FL FR DIR
+		000000 0  0  0  0  0  0  0  0  00
+	*/
+	u16	hash()
+	{
+		u16	res = 0;
+
+		res |= (u8(dir) << u16(Offset::DIRECTION));
+
+		res |= (u8(food_right) << u16(Offset::FOOD_RIGHT));
+		res |= (u8(food_left) << u16(Offset::FOOD_LEFT));
+		res |= (u8(food_down) << u16(Offset::FOOD_DOWN));
+		res |= (u8(food_up) << u16(Offset::FOOD_UP));
+
+		res |= (u8(danger_right) << u16(Offset::DANGER_RIGHT));
+		res |= (u8(danger_left) << u16(Offset::DANGER_LEFT));
+		res |= (u8(danger_down) << u16(Offset::DANGER_DOWN));
+		res |= (u8(danger_up) << u16(Offset::DANGER_UP));
+
+		return (res);
+	}
+};
+
 class	Game
 {
 	public:
@@ -157,11 +221,11 @@ class	Game
 
 			printMap();
 
-			while (1)
-			{
-				_snake->setDirection(static_cast<Direction>(rand() % 3));
-				_snake->update();
-			}
+			// while (1)
+			// {
+			// 	_snake->setDirection(static_cast<Direction>(rand() % 3));
+			// 	_snake->update();
+			// }
 		}
 
 		bool	isInBounds(Vec2i pos)
@@ -242,6 +306,11 @@ class	Game
 */
 int	main(void)
 {
+	State	test;
+
+	test.dir = Direction(1);
+	test.danger_up = true;
+	std::cout << test.hash() << std::endl;
 	Game	game(Vec2i(10, 10));
 	return (1);
 }
