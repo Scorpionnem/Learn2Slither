@@ -135,12 +135,12 @@ class	Map
 			Map(Vec2i size)
 			{
 				_size = size;
-				_map.resize(_size.x * _size.y);
+				_tiles.resize(_size.x * _size.y);
 			}
 	private:
 			Vec2i			_size;
 			std::vector<Tile>	_tiles;
-}
+};
 
 class	Game
 {
