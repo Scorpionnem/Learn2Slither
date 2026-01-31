@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 22:09:51 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 22:20:27 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,17 +56,22 @@ class	Game
 			Agent	agent;
 
 			int	it = 0;
+			int	maxIt = 1000000;
 
 			while (1)
 			{
+				bool	done = it > maxIt;
+				if (!done)
+					std::cout << "\rTraining in progress: " << (int)((float)it / (float)maxIt * 100.0f) << "%";
+
 				std::string	upView = getView(_snake->getHead().pos, Vec2i(0, -1));
 				std::string	downView = getView(_snake->getHead().pos, Vec2i(0, 1));
 				std::string	leftView = getView(_snake->getHead().pos, Vec2i(-1, 0));
 				std::string	rightView = getView(_snake->getHead().pos, Vec2i(1, 0));
 
-				Action	action = agent.process(upView, downView, leftView, rightView, it < 1000000);
+				Action	action = agent.process(upView, downView, leftView, rightView, !done);
 
-				if (it > 1000000)
+				if (done)
 				{
 					printMap();
 
@@ -83,7 +88,7 @@ class	Game
 
 				if (checkDeath())
 				{
-					if (it > 1000000)
+					if (done)
 					{
 						std::cout << "DEAD" << std::endl;
 						std::cout << agent.getStateVal() << std::endl;
@@ -109,8 +114,9 @@ class	Game
 				else
 					agent.reward(-0.1);
 
-				if (it++ > 1000000)
+				if (done)
 					usleep(50000);
+				it++;
 			}
 		}
 

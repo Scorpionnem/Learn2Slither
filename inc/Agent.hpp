@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 22:09:30 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 22:18:20 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -152,7 +152,7 @@ class	Agent
 
 			if (find == _QTable.states.end())
 			{
-				std::cout << "wow thats new " <<  reward << std::endl;
+				// std::cout << "wow thats new " <<  reward << std::endl;
 
 				_QTable.states[_lastStateProcessed].second = _lastActionTaken;
 				_QTable.states[_lastStateProcessed].first = reward;
@@ -160,7 +160,7 @@ class	Agent
 			}
 			if (find->second.first < reward)
 			{
-				std::cout << "wow thats better " <<  reward << " " << find->second.first << std::endl;
+				// std::cout << "wow thats better " <<  reward << " " << find->second.first << std::endl;
 
 				find->second.second = _lastActionTaken;
 				find->second.first = reward;
