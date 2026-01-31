@@ -6,169 +6,55 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/30 23:40:10 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 12:07:59 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <vector>
 #include <iostream>
 #include <memory>
+#include <unordered_map>
 #include <cstdint>
 #include "Vec2.hpp"
+#include <bitset>
+#include "Snake.hpp"
 
 using u8 = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
-
 using i16 = int16_t;
 using i32 = int32_t;
 
-enum class	Tile
-{
-	WALL = 'W',
-	SNAKE_HEAD = 'H',
-	SNAKE_BODY = 'S',
-	GREEN_APPLE = 'G',
-	RED_APPLE = 'R',
-	EMPTY = '0',
-};
-
-enum class	Direction
-{
-	UP = 0,
-	DOWN = 1,
-	LEFT = 2,
-	RIGHT = 3,
-};
-std::ostream& operator<<(std::ostream& os, const Direction& p)
-{
-	switch (p)
-	{
-		case Direction::UP:
-			return (os << "UP");
-		case Direction::DOWN:
-			return (os << "DOWN");
-		case Direction::LEFT:
-			return (os << "LEFT");
-		case Direction::RIGHT:
-			return (os << "RIGHT");
-	}
-	return (os);
-}
-constexpr bool is_opposite(Direction a, Direction b)
-{
-	return ((static_cast<int>(a) ^ static_cast<int>(b)) == 1);
-}
-
-struct	SnakePart
-{
-	SnakePart(Tile part, Direction dir, Vec2i pos)
-	{
-		this->part = part;
-		this->dir = dir;
-		this->pos = pos;
-	}
-	Tile			part;
-	Direction		dir;
-	Vec2i			pos;
-
-	void	update(Direction &prevDir)
-	{
-		if (dir == Direction::UP)
-			pos.y -= 1;
-		if (dir == Direction::DOWN)
-			pos.y += 1;
-		if (dir == Direction::LEFT)
-			pos.x -= 1;
-		if (dir == Direction::RIGHT)
-			pos.x += 1;
-
-		std::swap(dir, prevDir);
-	}
-};
-
-class	Snake
-{
-	public:
-		Snake(Direction dir, Vec2i headPos, int length)
-		{
-			_parts.push_back(SnakePart(Tile::SNAKE_HEAD, dir, headPos));
-			for (int i = 0; i < length; i++)
-			{
-				// Push parts behind head
-			}
-		}
-		void	update() // Advances snake by 1
-		{
-			SnakePart	&head = getHead();
-			Direction	prevDir = head.dir;
-
-			for (SnakePart &part : _parts)
-			{
-				// std::cout << part.dir << " " << part.pos.x << " " << part.pos.y << std::endl;
-				part.update(prevDir);
-			}
-		}
-
-		void	setDirection(Direction dir)
-		{
-			SnakePart	&head = getHead();
-			Direction	cur = head.dir;
-
-			if (!is_opposite(cur, dir))
-				head.dir = dir;
-		}
-
-		SnakePart	&getHead() {return (_parts.front());}
-	private:
-		std::vector<SnakePart>	_parts;
-};
-
-/*
- *
- *	Stores all of the game's tile infos.
- *	It is used to store only the basic tiles (food, walls, ...)
- *
- *	The snake's collisions are checked by checking the tile thats at the same position as its head.
- *
- *	TODO:
- *		Add a method to get the snake's vision.
- *		Add apple spawn methods
- *
- *
- * */
-class	Map
-{
-	public:
-			Map(Vec2i size)
-			{
-				_size = size;
-				_tiles.resize(_size.x * _size.y);
-			}
-	private:
-			Vec2i			_size;
-			std::vector<Tile>	_tiles;
-};
+using StateHash = u16;
 
 /*
 	Hash is used to store the current state of the map around the snake's head it can be compressed in a u16 to store in the q-table
 */
 struct	State
 {
+	State() {}
 	enum class	Offset
 	{
-		DIRECTION = 0,
+		FOOD_RIGHT = 0,
+		FOOD_LEFT = 1,
+		FOOD_DOWN = 2,
+		FOOD_UP = 3,
 
-		FOOD_RIGHT = 2,
-		FOOD_LEFT = 3,
-		FOOD_DOWN = 4,
-		FOOD_UP = 5,
+		DANGER_RIGHT = 4,
+		DANGER_LEFT = 5,
+		DANGER_DOWN = 6,
+		DANGER_UP = 7,
 
-		DANGER_RIGHT = 6,
-		DANGER_LEFT = 7,
-		DANGER_DOWN = 8,
-		DANGER_UP = 9,
+		DEATH_RIGHT = 8,
+		DEATH_LEFT = 9,
+		DEATH_DOWN = 10,
+		DEATH_UP = 11,
 	};
+	bool		death_up = false;
+	bool		death_down = false;
+	bool		death_left = false;
+	bool		death_right = false;
+
 	bool		danger_up = false;
 	bool		danger_down = false;
 	bool		danger_left = false;
@@ -179,18 +65,14 @@ struct	State
 	bool		food_left = false;
 	bool		food_right = false;
 
-	Direction	dir = Direction::RIGHT;
-
 	/*
 		Hashes the state in a u16
                DU DD DL DR FU FD FL FR DIR
 		000000 0  0  0  0  0  0  0  0  00
 	*/
-	u16	hash()
+	StateHash	hash()
 	{
-		u16	res = 0;
-
-		res |= (u8(dir) << u16(Offset::DIRECTION));
+		StateHash	res = 0;
 
 		res |= (u8(food_right) << u16(Offset::FOOD_RIGHT));
 		res |= (u8(food_left) << u16(Offset::FOOD_LEFT));
@@ -202,8 +84,65 @@ struct	State
 		res |= (u8(danger_down) << u16(Offset::DANGER_DOWN));
 		res |= (u8(danger_up) << u16(Offset::DANGER_UP));
 
+		res |= (u8(death_right) << u16(Offset::DEATH_RIGHT));
+		res |= (u8(death_left) << u16(Offset::DEATH_LEFT));
+		res |= (u8(death_down) << u16(Offset::DEATH_DOWN));
+		res |= (u8(death_up) << u16(Offset::DEATH_UP));
+
 		return (res);
 	}
+};
+
+struct	Action
+{
+	Action() {}
+	Direction	dir = Direction::DOWN;
+};
+
+#define SET_CURRENT_STATE_DIR(state, dir)												\
+			state.death_##dir = dir##View.find("WHS") != dir##View.npos;	\
+			state.danger_##dir = dir##View.find("R") != dir##View.npos;	\
+			state.food_##dir = dir##View.find("G") != dir##View.npos;	\
+
+struct QTable
+{
+	std::unordered_map<StateHash, std::vector<Action>>	states;
+};
+
+/*
+	On each update the view of the snake is given to the agent, it returns its action.
+	THEN, after it gave its action, the game decides what the reward is, at first the agent does not know what the best reward is?
+
+	It "learns" by trying, even if it has found a good move it will still sometimes try random move to find better (in training mode ig)
+*/
+class	Agent
+{
+	public:
+		Agent() {}
+		~Agent() {}
+
+		Action	process(const std::string &upView, const std::string &downView,
+						const std::string &leftView, const std::string &rightView)
+		{
+			State state = _makeState(upView, downView, leftView, rightView);
+
+			std::cout << std::bitset<16>(state.hash()).to_string() << std::endl;
+
+			return (Action());
+		}
+	private:
+		State	_makeState(const std::string &upView, const std::string &downView,
+									const std::string &leftView, const std::string &rightView)
+		{
+			State	s;
+
+			SET_CURRENT_STATE_DIR(s, up);
+			SET_CURRENT_STATE_DIR(s, down);
+			SET_CURRENT_STATE_DIR(s, left);
+			SET_CURRENT_STATE_DIR(s, right);
+			return (s);
+		}
+		QTable		_QTable;
 };
 
 class	Game
@@ -221,11 +160,9 @@ class	Game
 
 			printMap();
 
-			// while (1)
-			// {
-			// 	_snake->setDirection(static_cast<Direction>(rand() % 3));
-			// 	_snake->update();
-			// }
+			Agent	agent;
+
+			agent.process("R", "", "", "");
 		}
 
 		bool	isInBounds(Vec2i pos)
@@ -306,11 +243,6 @@ class	Game
 */
 int	main(void)
 {
-	State	test;
-
-	test.dir = Direction(1);
-	test.danger_up = true;
-	std::cout << test.hash() << std::endl;
 	Game	game(Vec2i(10, 10));
 	return (1);
 }
