@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 11:25:23 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/30 16:35:27 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 19:04:42 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ struct	Vec2
 	Vec2() : x(0), y(0) {}
 	Vec2(T x, T y) : x(x), y(y) {}
 	Vec2(T xy) : x(xy), y(xy) {}
-	
+
 	template <typename U>
 	Vec2(const Vec2<U>& other) : x(static_cast<T>(other.x)), y(static_cast<T>(other.y)) {}
 
@@ -38,7 +38,11 @@ struct	Vec2
 	{
 		return (Vec2(x / v.x, y / v.y));
 	}
-	
+	bool operator==(const Vec2 &v) const
+	{
+		return (x == v.x && y == v.y);
+	}
+
 	T	x, y;
 };
 

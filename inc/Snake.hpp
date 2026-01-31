@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 11:58:05 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 19:21:01 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,7 @@ class	Snake
 			_parts.push_back(SnakePart(Tile::SNAKE_HEAD, dir, headPos));
 			for (int i = 0; i < length; i++)
 			{
+				_parts.push_back(SnakePart(Tile::SNAKE_BODY, dir, Vec2i(headPos.x - (i + 1), headPos.y)));
 				// Push parts behind head
 			}
 		}
@@ -66,6 +67,21 @@ class	Snake
 				// std::cout << part.dir << " " << part.pos.x << " " << part.pos.y << std::endl;
 				part.update(prevDir);
 			}
+		}
+
+		bool	hasPart(Vec2i pos)
+		{
+			for (SnakePart &part : _parts)
+				if (part.pos == pos)
+					return (true);
+			return (false);
+		}
+		const SnakePart	&getPart(Vec2i pos)
+		{
+			for (SnakePart &part : _parts)
+				if (part.pos == pos)
+					return (part);
+			throw std::runtime_error("Snake has no part here!");
 		}
 
 		void	setDirection(Direction dir)
