@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 19:14:03 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 22:09:30 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,9 +103,9 @@ struct	Action
 };
 
 #define SET_CURRENT_STATE_DIR(state, dir)												\
-			state.death_##dir = dir##View.find("WHS") != dir##View.npos;	\
-			state.danger_##dir = dir##View.find("R") != dir##View.npos;	\
-			state.food_##dir = dir##View.find("G") != dir##View.npos;	\
+			state.death_##dir = dir##View[1] == 'W' || dir##View[1] == 'S';	\
+			state.danger_##dir = dir##View[1] == 'R';	\
+			state.food_##dir = dir##View.find('G') != dir##View.npos;	\
 
 struct QTable
 {
@@ -125,24 +125,24 @@ class	Agent
 		~Agent() {}
 
 		Action	process(const std::string &upView, const std::string &downView,
-						const std::string &leftView, const std::string &rightView)
+						const std::string &leftView, const std::string &rightView, bool randomness)
 		{
 			State state = _makeState(upView, downView, leftView, rightView);
 
 			_lastStateProcessed = state.hash();
 
 			auto	find = _QTable.states.find(_lastStateProcessed);
-			if (find == _QTable.states.end())
+			if ((randomness && rand() % 10 < 3) || find == _QTable.states.end())
 			{
-				Action	action = Action(Direction(rand() % 3));
+				Action	action = Action(Direction(rand() % 4));
 
 				_lastActionTaken = action;
 
-				_QTable.states[_lastStateProcessed].second = action;
-
+				lastVal = -42;
 				return (action);
 			}
 
+			lastVal = find->second.first;
 			_lastActionTaken = find->second.second;
 			return (find->second.second);
 		}
@@ -150,11 +150,25 @@ class	Agent
 		{
 			auto	find = _QTable.states.find(_lastStateProcessed);
 
+			if (find == _QTable.states.end())
+			{
+				std::cout << "wow thats new " <<  reward << std::endl;
+
+				_QTable.states[_lastStateProcessed].second = _lastActionTaken;
+				_QTable.states[_lastStateProcessed].first = reward;
+				return ;
+			}
 			if (find->second.first < reward)
 			{
+				std::cout << "wow thats better " <<  reward << " " << find->second.first << std::endl;
+
 				find->second.second = _lastActionTaken;
 				find->second.first = reward;
 			}
+		}
+		float	getStateVal()
+		{
+			return (lastVal);
 		}
 	private:
 		State	_makeState(const std::string &upView, const std::string &downView,
@@ -169,6 +183,7 @@ class	Agent
 			return (s);
 		}
 		QTable		_QTable;
+		float	lastVal = -42;
 
 		Action		_lastActionTaken;
 		StateHash	_lastStateProcessed;

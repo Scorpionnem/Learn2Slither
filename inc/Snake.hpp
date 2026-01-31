@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 19:21:01 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 21:38:42 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,11 +62,17 @@ class	Snake
 			SnakePart	&head = getHead();
 			Direction	prevDir = head.dir;
 
+			lastTailDir = _parts.back().dir;
+			lastTailPos = _parts.back().pos;
 			for (SnakePart &part : _parts)
 			{
 				// std::cout << part.dir << " " << part.pos.x << " " << part.pos.y << std::endl;
 				part.update(prevDir);
 			}
+		}
+		void	growSnake()
+		{
+			_parts.push_back(SnakePart(Tile::SNAKE_BODY, lastTailDir, lastTailPos));
 		}
 
 		bool	hasPart(Vec2i pos)
@@ -83,6 +89,16 @@ class	Snake
 					return (part);
 			throw std::runtime_error("Snake has no part here!");
 		}
+		bool	collides()
+		{
+			for (SnakePart &part : _parts)
+			{
+				for (SnakePart &part_check : _parts)
+					if (part.pos == part_check.pos && &part != &part_check)
+						return (true);
+			}
+			return (false);
+		}
 
 		void	setDirection(Direction dir)
 		{
@@ -96,4 +112,6 @@ class	Snake
 		SnakePart	&getHead() {return (_parts.front());}
 	private:
 		std::vector<SnakePart>	_parts;
+		Direction				lastTailDir;
+		Vec2i					lastTailPos;
 };

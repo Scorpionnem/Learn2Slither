@@ -6,11 +6,12 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 19:27:08 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/01/31 22:09:51 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <vector>
+#include <unistd.h>
 #include <iostream>
 #include <memory>
 #include <unordered_map>
@@ -26,6 +27,20 @@ using u32 = uint32_t;
 using i16 = int16_t;
 using i32 = int32_t;
 
+namespace Color
+{
+	constexpr const char	*Red = "\e[0;31m";
+	constexpr const char	*Green = "\e[0;32m";
+	constexpr const char	*Blue = "\e[0;34m";
+	constexpr const char	*Yellow = "\e[0;33m";
+	constexpr const char	*Black = "\e[0;30m";
+	constexpr const char	*Purple = "\e[0;35m";
+	constexpr const char	*Cyan = "\e[0;36m";
+	constexpr const char	*White = "\e[0;37m";
+
+	constexpr const char	*Reset = "\e[0m";
+};
+
 class	Game
 {
 	public:
@@ -36,16 +51,95 @@ class	Game
 			_tiles.resize(_size.x * _size.y);
 			_map.resize(_size.x * _size.y);
 
-			_generateWalls();
-			_spawnSnake();
+			resetState();
 
 			Agent	agent;
 
-			printMap();
-			_snake->update();
-			printMap();
-			_snake->update();
-			printMap();
+			int	it = 0;
+
+			while (1)
+			{
+				std::string	upView = getView(_snake->getHead().pos, Vec2i(0, -1));
+				std::string	downView = getView(_snake->getHead().pos, Vec2i(0, 1));
+				std::string	leftView = getView(_snake->getHead().pos, Vec2i(-1, 0));
+				std::string	rightView = getView(_snake->getHead().pos, Vec2i(1, 0));
+
+				Action	action = agent.process(upView, downView, leftView, rightView, it < 1000000);
+
+				if (it > 1000000)
+				{
+					printMap();
+
+					std::cout << upView << std::endl;
+					std::cout << downView << std::endl;
+					std::cout << leftView << std::endl;
+					std::cout << rightView << std::endl;
+
+					std::cout << action.dir << std::endl;
+				}
+
+				_snake->setDirection(action.dir);
+				_snake->update();
+
+				if (checkDeath())
+				{
+					if (it > 1000000)
+					{
+						std::cout << "DEAD" << std::endl;
+						std::cout << agent.getStateVal() << std::endl;
+						sleep(1);
+					}
+					agent.reward(-1000);
+					resetState();
+				}
+				else if (is_opposite(action.dir, _snake->getHead().dir))
+					agent.reward(-100);
+				else if (checkFood())
+				{
+					setTile(Tile::EMPTY, _snake->getHead().pos);
+					_generateFood();
+					_snake->growSnake();
+					agent.reward(100);
+					// Good reward
+				}
+				else if (checkBadFood())
+				{
+					agent.reward(-1);
+				}
+				else
+					agent.reward(-0.1);
+
+				if (it++ > 1000000)
+					usleep(50000);
+			}
+		}
+
+		bool	checkFood()
+		{
+			if (getTileNoSnake(_snake->getHead().pos) == Tile::GREEN_APPLE)
+				return (true);
+			return (false);
+		}
+		bool	checkBadFood()
+		{
+			return (false);
+		}
+
+		bool	checkDeath()
+		{
+			if (!isInBounds(_snake->getHead().pos))
+				return (true);
+			if (getTileNoSnake(_snake->getHead().pos) == Tile::WALL)
+				return (true);
+			if (_snake->collides())
+				return (true);
+			return (false);
+		}
+
+		void	resetState()
+		{
+			_generateWalls();
+			_spawnSnake();
 		}
 
 		std::string	getView(Vec2i pos, Vec2i dir)
@@ -78,6 +172,12 @@ class	Game
 				return (Tile::WALL);
 			return (_tiles[pos.x + pos.y * _size.x]);
 		}
+		Tile	getTileNoSnake(Vec2i pos)
+		{
+			if (!isInBounds(pos))
+				return (Tile::WALL);
+			return (_tiles[pos.x + pos.y * _size.x]);
+		}
 
 		void	printMap()
 		{
@@ -88,18 +188,12 @@ class	Game
 				for (int x = 0; x < _size.x; x++)
 				{
 					if (_snake->hasPart(Vec2i(x, y)))
-						std::cout << (char)_snake->getPart(Vec2i(x, y)).part;
+						std::cout << Color::Green << (char)_snake->getPart(Vec2i(x, y)).part << Color::Reset;
 					else
 						std::cout << (char)getTile(Vec2i(x, y));
 				}
 				std::cout << std::endl;
 			}
-
-			std::cout << std::endl;
-			std::cout << getView(_snake->getHead().pos, Vec2i(0, -1)) << " " << Direction::UP << std::endl; // UP
-			std::cout << getView(_snake->getHead().pos, Vec2i(0, 1)) << " " << Direction::DOWN << std::endl; // DOWN
-			std::cout << getView(_snake->getHead().pos, Vec2i(-1, 0)) << " " << Direction::LEFT << std::endl; // LEFT
-			std::cout << getView(_snake->getHead().pos, Vec2i(1, 0)) << " " << Direction::RIGHT << std::endl; // RIGHT
 		}
 	private:
 		void	_generateWalls()
@@ -114,6 +208,13 @@ class	Game
 						setTile(Tile::EMPTY, Vec2i(x, y));
 				}
 			}
+			_generateFood();
+			_generateFood();
+			_generateFood();
+		}
+		void	_generateFood()
+		{
+			setTile(Tile::GREEN_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
 		}
 		void	_spawnSnake()
 		{
@@ -149,8 +250,10 @@ class	Game
 				Try to find a similar situation (Would need to find some algo for that)
 				Take random choice to build up its situation table.
 */
+#include <ctime>
 int	main(void)
 {
+	srand(std::time(NULL));
 	Game	game(Vec2i(10, 10));
 	return (1);
 }
