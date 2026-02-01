@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 21:38:42 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/01 18:39:52 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,9 +70,13 @@ class	Snake
 				part.update(prevDir);
 			}
 		}
-		void	growSnake()
+		void	grow()
 		{
 			_parts.push_back(SnakePart(Tile::SNAKE_BODY, lastTailDir, lastTailPos));
+		}
+		void	shrink()
+		{
+			_parts.pop_back();
 		}
 
 		bool	hasPart(Vec2i pos)
@@ -100,13 +104,17 @@ class	Snake
 			return (false);
 		}
 
-		void	setDirection(Direction dir)
+		bool	setDirection(Direction dir)
 		{
 			SnakePart	&head = getHead();
 			Direction	cur = head.dir;
 
 			if (!is_opposite(cur, dir))
+			{
 				head.dir = dir;
+				return (true);
+			}
+			return (false);
 		}
 
 		SnakePart	&getHead() {return (_parts.front());}

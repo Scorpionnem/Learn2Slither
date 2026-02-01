@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 12:04:15 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/01 19:18:44 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,6 @@ using i32 = int32_t;
 
 using StateHash = u16;
 
-#define SET_CURRENT_STATE_DIR(state, dir)												\
-			death_##dir = dir##View[1] == 'W' || dir##View[1] == 'S';	\
-			danger_##dir = dir##View[1] == 'R';	\
-			food_##dir = dir##View.find('G') != dir##View.npos;	\
-
 /*
 	Hash is used to store the current state of the map around the snake's head it can be compressed in a u16 to store in the q-table
 */
@@ -40,10 +35,23 @@ struct	State
 	State(const std::string &upView, const std::string &downView,
 								const std::string &leftView, const std::string &rightView)
 	{
-		SET_CURRENT_STATE_DIR(s, up);
-		SET_CURRENT_STATE_DIR(s, down);
-		SET_CURRENT_STATE_DIR(s, left);
-		SET_CURRENT_STATE_DIR(s, right);
+		set_dir(death_up, danger_up, food_up, upView);
+		set_dir(death_down, danger_down, food_down, downView);
+		set_dir(death_left, danger_left, food_left, leftView);
+		set_dir(death_right, danger_right, food_right, rightView);
+	}
+	void set_dir(bool &death, bool &danger, bool &food, const std::string &view)
+	{
+		if (view.size() > 1)
+		{
+			death  = (view[1] == 'W' || view[1] == 'S');
+			danger = (view[1] == 'R');
+		}
+		else
+		{
+			death = danger = false;
+		}
+		food = view.find('G') != std::string::npos;
 	}
 	enum class	Offset
 	{
@@ -113,6 +121,7 @@ struct	Action
 		this->dir = dir;
 	}
 	Direction	dir = Direction::DOWN;
+	float		value = 0;
 };
 
 struct QTable
@@ -133,14 +142,14 @@ class	Agent
 		~Agent() {}
 
 		Action	process(const std::string &upView, const std::string &downView,
-						const std::string &leftView, const std::string &rightView, bool randomness)
+						const std::string &leftView, const std::string &rightView)
 		{
 			State state(upView, downView, leftView, rightView);
 
 			_lastStateProcessed = state.hash();
 
 			auto	find = _QTable.states.find(_lastStateProcessed);
-			if ((randomness && rand() % 10 < 3) || find == _QTable.states.end())
+			if ((_training && rand() % 10 < 3) || find == _QTable.states.end())
 			{
 				Action	action = Action(Direction(rand() % 4));
 
@@ -164,6 +173,7 @@ class	Agent
 
 				_QTable.states[_lastStateProcessed].second = _lastActionTaken;
 				_QTable.states[_lastStateProcessed].first = reward;
+				_QTable.states[_lastStateProcessed].second.value = reward;
 				return ;
 			}
 			if (find->second.first < reward)
@@ -172,15 +182,18 @@ class	Agent
 
 				find->second.second = _lastActionTaken;
 				find->second.first = reward;
+				find->second.second.value = reward;
 			}
 		}
 		float	getStateVal()
 		{
 			return (lastVal);
 		}
+		void	setTraining(bool state) {_training = state;}
 	private:
 		QTable		_QTable;
 		float	lastVal = -42;
+		bool	_training = true;
 
 		Action		_lastActionTaken;
 		StateHash	_lastStateProcessed;

@@ -1,7 +1,7 @@
 NAME :=	Learn2Slither
 
 CXX :=	c++
-CXXFLAGS :=	-Wall -Wextra -Werror -g -MP -MMD # -fsanitize=address -fno-omit-frame-pointer
+CXXFLAGS :=	-g -MP -MMD # -Wall -Wextra -Werror -g -MP -MMD # -fsanitize=address -fno-omit-frame-pointer
 LFLAGS :=
 
 ###
