@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 22:18:20 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/01 12:04:15 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,25 @@ using i32 = int32_t;
 
 using StateHash = u16;
 
+#define SET_CURRENT_STATE_DIR(state, dir)												\
+			death_##dir = dir##View[1] == 'W' || dir##View[1] == 'S';	\
+			danger_##dir = dir##View[1] == 'R';	\
+			food_##dir = dir##View.find('G') != dir##View.npos;	\
+
 /*
 	Hash is used to store the current state of the map around the snake's head it can be compressed in a u16 to store in the q-table
 */
 struct	State
 {
 	State() {}
+	State(const std::string &upView, const std::string &downView,
+								const std::string &leftView, const std::string &rightView)
+	{
+		SET_CURRENT_STATE_DIR(s, up);
+		SET_CURRENT_STATE_DIR(s, down);
+		SET_CURRENT_STATE_DIR(s, left);
+		SET_CURRENT_STATE_DIR(s, right);
+	}
 	enum class	Offset
 	{
 		FOOD_RIGHT = 0,
@@ -102,11 +115,6 @@ struct	Action
 	Direction	dir = Direction::DOWN;
 };
 
-#define SET_CURRENT_STATE_DIR(state, dir)												\
-			state.death_##dir = dir##View[1] == 'W' || dir##View[1] == 'S';	\
-			state.danger_##dir = dir##View[1] == 'R';	\
-			state.food_##dir = dir##View.find('G') != dir##View.npos;	\
-
 struct QTable
 {
 	std::unordered_map<StateHash, std::pair<float, Action>>	states;
@@ -127,7 +135,7 @@ class	Agent
 		Action	process(const std::string &upView, const std::string &downView,
 						const std::string &leftView, const std::string &rightView, bool randomness)
 		{
-			State state = _makeState(upView, downView, leftView, rightView);
+			State state(upView, downView, leftView, rightView);
 
 			_lastStateProcessed = state.hash();
 
@@ -171,17 +179,6 @@ class	Agent
 			return (lastVal);
 		}
 	private:
-		State	_makeState(const std::string &upView, const std::string &downView,
-									const std::string &leftView, const std::string &rightView)
-		{
-			State	s;
-
-			SET_CURRENT_STATE_DIR(s, up);
-			SET_CURRENT_STATE_DIR(s, down);
-			SET_CURRENT_STATE_DIR(s, left);
-			SET_CURRENT_STATE_DIR(s, right);
-			return (s);
-		}
 		QTable		_QTable;
 		float	lastVal = -42;
 

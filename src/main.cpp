@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 22:20:27 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/01 12:06:31 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,18 +69,22 @@ class	Game
 				std::string	leftView = getView(_snake->getHead().pos, Vec2i(-1, 0));
 				std::string	rightView = getView(_snake->getHead().pos, Vec2i(1, 0));
 
+				State state(upView, downView, leftView, rightView);
+
 				Action	action = agent.process(upView, downView, leftView, rightView, !done);
 
 				if (done)
 				{
 					printMap();
 
-					std::cout << upView << std::endl;
-					std::cout << downView << std::endl;
-					std::cout << leftView << std::endl;
-					std::cout << rightView << std::endl;
+					std::cout << "UP	"<< upView << std::endl;
+					std::cout << "DOWN	"<< downView << std::endl;
+					std::cout << "LEFT	"<< leftView << std::endl;
+					std::cout << "RIGHT	"<< rightView << std::endl;
 
-					std::cout << action.dir << std::endl;
+					std::cout << std::endl << "State key: " << state.hash() << std::endl;
+					std::cout  << "up food: " << state.food_up << " down food: " << state.food_up << " left food: " << state.food_left << " right food: " << state.food_right << std::endl;
+					std::cout  << "Agent: " << action.dir << std::endl;
 				}
 
 				_snake->setDirection(action.dir);
