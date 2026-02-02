@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 19:29:11 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/02 11:05:21 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,11 +15,17 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+#include <algorithm>
 #include <cstdint>
 #include "Vec2.hpp"
 #include <bitset>
 #include "Snake.hpp"
 #include "Agent.hpp"
+
+#include "Window.hpp"
+#include <imgui.h>
+#include <backends/imgui_impl_sdl2.h>
+#include <backends/imgui_impl_sdlrenderer2.h>
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -67,7 +73,7 @@ class	SnakeGame
 		SnakeGame(Vec2i size)
 		{
 			_size = size;
-			_tiles.resize(_size.x * _size.y);
+			reset();
 		}
 		~SnakeGame() {}
 
@@ -106,6 +112,8 @@ class	SnakeGame
 		}
 		void	reset()
 		{
+			_tiles.resize(_size.x * _size.y);
+
 			_generateWalls();
 
 			_spawnSnake();
@@ -239,11 +247,58 @@ inline std::ostream& operator<<(std::ostream& os, const SnakeGame::Event& p)
 	return (os);
 }
 
+#define TILE_SIZE 64
 class	Game
 {
 	public:
-		Game(Vec2i size) : _game(size) {}
+		Game(Vec2i size) : _game(size)
+		{
+			_size = size;
+		}
 
+		void	start()
+		{
+			_window.open(_size.x * TILE_SIZE, _size.y * TILE_SIZE, "Learn2Slither");
+
+			while (_running)
+			{
+				_window.pollEvents();
+
+				ImGui_ImplSDLRenderer2_NewFrame();
+				ImGui_ImplSDL2_NewFrame();
+				ImGui::NewFrame();
+				///////////////////////
+
+				const Window::Events	&events = _window.getEvents();
+
+				if (events.getKey(SDLK_ESCAPE))
+					_running = false;
+
+				ImGui::Begin("Training");
+				
+				ImGui::InputInt("Sessions", &_trainingSessions);
+				_trainingSessions = std::clamp(_trainingSessions, 1, 10000000);
+				ImGui::Checkbox("Render", &_renderTraining);
+
+				if (ImGui::Button("Start"))
+					trainAgent(_trainingSessions);
+				ImGui::End();
+
+				///////////////////
+				ImGui::Render();
+				ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), _window.getRendererPtr());
+				_window.display();
+			}
+		}
+		void	trainAgent(int sessions)
+		{
+			for (int i = 0; i < sessions; i++)
+			{
+				simulateGame(_renderTraining, true);
+				std::cout << '\r' << i + 1 << "/" << sessions;
+			}
+			std::cout << std::endl;
+		}
 		void	simulateGame(bool print, bool training, float stepTime = 0.1)
 		{
 			_game.reset();
@@ -284,23 +339,22 @@ class	Game
 			}
 		}
 	private:
+		int			_trainingSessions = 1;
+		bool		_renderTraining = true;
+		Window		_window;
+		bool		_running = true;
 		Agent		_agent;
 		SnakeGame	_game;
+		Vec2i		_size;
 };
 
 #include <ctime>
 int	main(void)
 {
 	srand(std::time(NULL));
+	
 	Game	game(Vec2i(11, 11));
 
-	int	trainCycles = 50000;
-	for (int i = 0; i < trainCycles; i++)
-	{
-		std::cout << '\r' << i << "/" << trainCycles;
-		game.simulateGame(false, true);
-	}
-	while (1)
-		game.simulateGame(true, false, 0.1);
+	game.start();
 	return (1);
 }
