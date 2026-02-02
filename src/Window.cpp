@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:26:45 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/02 10:46:26 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/02 11:21:11 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,7 +55,6 @@ void	Window::close()
 
 void	Window::pollEvents()
 {
-	SDL_RenderClear(_renderer);
 	SDL_Event	event;
 
 	_events.reset();

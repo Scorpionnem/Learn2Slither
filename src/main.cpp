@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/02 11:05:21 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/02 11:36:17 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,7 @@ using u16 = uint16_t;
 using u32 = uint32_t;
 using i16 = int16_t;
 using i32 = int32_t;
+#define TILE_SIZE 64
 
 namespace Color
 {
@@ -92,6 +93,7 @@ class	SnakeGame
 
 			if (_checkFood())
 			{
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
 				_snake->grow();
 				return (Event::GROW_SNAKE);
 			}
@@ -118,8 +120,8 @@ class	SnakeGame
 
 			_spawnSnake();
 
-			// _generateFood();
-			// _generateFood();
+			_generateFood();
+			_generateFood();
 
 			_dead = false;
 		}
@@ -129,16 +131,36 @@ class	SnakeGame
 			return (_snake->setDirection(dir));
 		}
 
-		void	printMap()
+		void	printMap(SDL_Renderer *renderer)
 		{
 			for (int y = 0; y < _size.y; y++)
 			{
 				for (int x = 0; x < _size.x; x++)
 				{
+					SDL_Rect rectangle = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+					Tile	tile;
+					
 					if (_snake->hasPart(Vec2i(x, y)))
-						std::cout << Color::Green << (char)_snake->getPart(Vec2i(x, y)).part << Color::Reset;
+						tile = _snake->getPart(Vec2i(x, y)).part;
 					else
-						std::cout << (char)_getTile(Vec2i(x, y));
+						tile = _getTile(Vec2i(x, y));
+					
+					switch (tile)
+					{
+						case Tile::EMPTY:
+							SDL_SetRenderDrawColor(renderer, 0,  0, 0, 1); break;
+						case Tile::SNAKE_BODY:
+							SDL_SetRenderDrawColor(renderer, 0,  255, 0, 1); break;
+						case Tile::SNAKE_HEAD:
+							SDL_SetRenderDrawColor(renderer, 0,  255, 64, 1); break;
+						case Tile::WALL:
+							SDL_SetRenderDrawColor(renderer, 128,  128, 128, 1); break;
+						case Tile::GREEN_APPLE:
+							SDL_SetRenderDrawColor(renderer, 64,  0, 255, 1); break;
+						case Tile::RED_APPLE:
+							SDL_SetRenderDrawColor(renderer, 255,  0, 0, 1); break;
+					}
+					SDL_RenderFillRect(renderer, &rectangle);
 				}
 				std::cout << std::endl;
 			}
@@ -247,7 +269,6 @@ inline std::ostream& operator<<(std::ostream& os, const SnakeGame::Event& p)
 	return (os);
 }
 
-#define TILE_SIZE 64
 class	Game
 {
 	public:
@@ -274,15 +295,8 @@ class	Game
 				if (events.getKey(SDLK_ESCAPE))
 					_running = false;
 
-				ImGui::Begin("Training");
-				
-				ImGui::InputInt("Sessions", &_trainingSessions);
-				_trainingSessions = std::clamp(_trainingSessions, 1, 10000000);
-				ImGui::Checkbox("Render", &_renderTraining);
-
-				if (ImGui::Button("Start"))
-					trainAgent(_trainingSessions);
-				ImGui::End();
+				updateTraining();
+				showInfos();
 
 				///////////////////
 				ImGui::Render();
@@ -290,57 +304,106 @@ class	Game
 				_window.display();
 			}
 		}
-		void	trainAgent(int sessions)
+		void	updateTraining()
 		{
-			for (int i = 0; i < sessions; i++)
-			{
-				simulateGame(_renderTraining, true);
-				std::cout << '\r' << i + 1 << "/" << sessions;
-			}
-			std::cout << std::endl;
+			ImGui::Begin("Snake");
+			ImGui::InputInt("Sessions", &_trainingSessions);
+			_trainingSessions = std::clamp(_trainingSessions, 1, 10000000);
+			ImGui::Checkbox("Render", &_renderTraining);
+			ImGui::SameLine();
+			ImGui::Checkbox("Learn", &_learning);
+
+			if (ImGui::Button("Start"))
+				startTraining();
+			ImGui::SameLine();
+			if (ImGui::Button("Stop"))
+				stopTraining();
+			ImGui::End();
+
+			if (_training)
+				stepTraining();
 		}
-		void	simulateGame(bool print, bool training, float stepTime = 0.1)
+		void	showInfos()
+		{
+			ImGui::Begin("Infos");
+			ImGui::Text("Sessions Done %d", _trainingSessionsDoneTotal);
+			ImGui::End();
+		}
+		void	startTraining()
+		{
+			if (_training)
+				return ;
+			_training = true;
+			_trainingSessionsDone = 0;
+			startGame(_learning);
+		}
+		void	stopTraining()
+		{
+			if (!_training)
+				return ;
+			_training = false;
+		}
+		void	stepTraining()
+		{
+			if (!_gameRunning)
+				startGame(_learning);
+			stepGame(_renderTraining, 0.1 * _renderTraining);
+			if (!_gameRunning)
+			{
+				_trainingSessionsDone++;
+				_trainingSessionsDoneTotal++;
+				if (_trainingSessionsDone >= _trainingSessions)
+					_training = false;
+			}
+		}
+		void	startGame(bool training)
 		{
 			_game.reset();
-
-			bool	running = true;
 			_agent.setTraining(training);
-			while (running)
+			_gameRunning = true;
+		}
+		void	stepGame(bool print, float stepTime = 0.1)
+		{
+			if (print) std::cout << Color::Cyan << "VVVVVV" << Color::Reset << std::endl;
+
+			std::string	upView, downView, leftView, rightView;
+			_game.getSnakeVision(upView, downView, leftView, rightView);
+
+			Action	action = _agent.process(upView, downView, leftView, rightView);
+
+			if (print) std::cout << "Agent: " << action.dir << " decision had a value of " << action.value << std::endl;
+			_game.setSnakeDir(action.dir);
+
+			SnakeGame::Event	event = _game.update();
+			
+			if (print) std::cout << "Event: " << event << std::endl;
+			if (print) _game.printMap(_window.getRendererPtr());
+
+			switch (event)
 			{
-				if (print) std::cout << Color::Cyan << "VVVVVV" << Color::Reset << std::endl;
-
-				std::string	upView, downView, leftView, rightView;
-				_game.getSnakeVision(upView, downView, leftView, rightView);
-
-				Action	action = _agent.process(upView, downView, leftView, rightView);
-
-				if (print) std::cout << "Agent: " << action.dir << " decision had a value of " << action.value << std::endl;
-				_game.setSnakeDir(action.dir);
-
-				SnakeGame::Event	event = _game.update();
-				
-				if (print) std::cout << "Event: " << event << std::endl;
-				if (print) _game.printMap();
-
-				switch (event)
-				{
-					case SnakeGame::Event::DEATH:
-						_agent.reward(-100); running = false; break;
-					case SnakeGame::Event::GROW_SNAKE:
-						_agent.reward(100); break;
-					case SnakeGame::Event::SHRINK_SNAKE:
-						_agent.reward(-10); break;
-					case SnakeGame::Event::NONE:
-						_agent.reward(-0.1); break;
-				}
-
-				if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
-				if (print) usleep(stepTime * 1000000);
+				case SnakeGame::Event::DEATH:
+					_agent.reward(-100); _gameRunning = false; break;
+				case SnakeGame::Event::GROW_SNAKE:
+					_agent.reward(100); break;
+				case SnakeGame::Event::SHRINK_SNAKE:
+					_agent.reward(-10); break;
+				case SnakeGame::Event::NONE:
+					_agent.reward(-0.1); break;
 			}
+
+			if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
+			if (print) usleep(stepTime * 1000000);
 		}
 	private:
 		int			_trainingSessions = 1;
+		int			_trainingSessionsDone = 0;
+		int			_trainingSessionsDoneTotal = 0;
 		bool		_renderTraining = true;
+		bool		_training = false;
+		bool		_learning = false;
+
+		bool		_gameRunning = false;
+
 		Window		_window;
 		bool		_running = true;
 		Agent		_agent;
