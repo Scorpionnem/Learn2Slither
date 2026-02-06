@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/06 14:53:03 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/06 17:21:57 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,14 +88,14 @@ class	SnakeGame
 			{
 				_snake->grow();
 				_setTile(Tile::EMPTY, _snake->getHead().pos);
-				_generateFood();
+				_generateFood(Tile::GREEN_APPLE);
 				return (Event::GROW_SNAKE);
 			}
 			if (_checkBadFood())
 			{
 				_snake->shrink();
 				_setTile(Tile::EMPTY, _snake->getHead().pos);
-				_generateBadFood();
+				_generateFood(Tile::RED_APPLE);
 				if (_snake->size() == 0)
 					return (Event::DEATH);
 				return (Event::SHRINK_SNAKE);
@@ -116,10 +116,10 @@ class	SnakeGame
 
 			_spawnSnake();
 
-			_generateFood();
-			_generateFood();
+			_generateFood(Tile::GREEN_APPLE);
+			_generateFood(Tile::GREEN_APPLE);
 
-			_generateBadFood();
+			_generateFood(Tile::RED_APPLE);
 
 			_dead = false;
 		}
@@ -218,9 +218,17 @@ class	SnakeGame
 			return (_tiles[pos.x + pos.y * _size.x]);
 		}
 
-		void	_generateFood()
+		void	_generateFood(Tile type)
 		{
-			_setTile(Tile::GREEN_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
+			while (1)
+			{
+				Vec2i	pos = Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1);
+				if (_getTile(pos) == Tile::EMPTY)
+				{
+					_setTile(type, pos);
+					break ;
+				}
+			}
 		}
 		void	_generateBadFood()
 		{
@@ -228,7 +236,8 @@ class	SnakeGame
 		}
 		void	_spawnSnake()
 		{
-			_snake = std::make_unique<Snake>(Direction::RIGHT, _size / 2, 2);
+			Vec2i	spawnPos = _size / 2;
+			_snake = std::make_unique<Snake>(Direction::RIGHT, spawnPos, 2);
 		}
 		void	_generateWalls()
 		{
@@ -277,8 +286,7 @@ class	Game
 			_game.reset();
 
 			bool	running = true;
-			int		it = 0;
-			int		last_food_it = 0;
+			int	no_eat = 0;
 			while (running)
 			{
 				if (print) _agent._learning = false;
@@ -300,14 +308,15 @@ class	Game
 				if (print) std::cout << "Event: " << event << std::endl;
 				if (print) std::cout << "Size: " << _game.getSnakeSize() << std::endl;
 				if (print) std::cout << "Biggest " << _maxSizeTotal << std::endl;
+				if (print) std::cout << "State " << state.hash() << std::endl;
 				if (print) _game.printMap();
 
 				switch (event)
 				{
 					case SnakeGame::Event::DEATH:
-						_agent.reward(state.hash(), -100); running = false; break;
+						_agent.reward(0, -100); running = false; break;
 					case SnakeGame::Event::GROW_SNAKE:
-						_agent.reward(state.hash(), 100); last_food_it = it; break;
+						_agent.reward(state.hash(), 100); no_eat = 0; break;
 					case SnakeGame::Event::SHRINK_SNAKE:
 						_agent.reward(state.hash(), -10); break;
 					case SnakeGame::Event::NONE:
@@ -316,10 +325,20 @@ class	Game
 
 				if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
 				if (print) usleep(stepTime * 1000000);
-				it++;
+
+				if (!training && no_eat++ > 64)
+					break ;
 			}
 			if (_game.getSnakeSize() > _maxSizeTotal)
 				_maxSizeTotal = _game.getSnakeSize();
+		}
+		void	exportModel(const std::string &path)
+		{
+			_agent.exportModel(path);
+		}
+		void	importModel(const std::string &path)
+		{
+			_agent.importModel(path);
 		}
 	private:
 		int			_maxSizeTotal = 0;
@@ -334,12 +353,14 @@ int	main(void)
 	srand(std::time(NULL));
 	Game	game(Vec2i(11, 11));
 
+	game.importModel("model.txt");
 	int	trainCycles = 50000;
 	for (int i = 0; i < trainCycles; i++)
 	{
 		std::cout << '\r' << i << "/" << trainCycles;
 		game.simulateGame(false, true);
 	}
+	game.exportModel("models/50k11x11.txt");
 	while (1)
 		game.simulateGame(true, false, 0.1);
 	return (1);

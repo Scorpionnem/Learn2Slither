@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/06 14:56:47 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/06 17:03:29 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <cstdint>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 using u16 = uint16_t;
 using u8 = uint8_t;
@@ -125,7 +127,7 @@ struct QTable
 {
 	float	learning_rate = 0.8;
 	float	discount_factor = 0.95;
-	float	exploration_prob = 0.2;
+	float	exploration_prob = 0.4;
 
 	void	update_q_value(StateHash state, StateHash next_state, Direction action, float reward)
 	{
@@ -144,7 +146,7 @@ struct QTable
 				max = actions[i] > max;
 		return (max);
 	}
-	Direction	get_best_action_for_state(StateHash state, bool print)
+	Direction	get_best_action_for_state(StateHash state)
 	{
 		std::array<float, 4>	&actions = states[state];
 		float	max = actions[0];
@@ -156,12 +158,55 @@ struct QTable
 				maxi = i;
 				max = actions[i] > max;
 			}
-		if (print)
-			std::cout << "value " << max << std::endl;
 		return (static_cast<Direction>(maxi));
 	}
 
 	std::unordered_map<StateHash, std::array<float, 4>>	states;
+	
+	void	exportModel(const std::string &path)
+	{
+		std::ofstream	file(path);
+		if (!file.is_open())
+			return ;
+		
+		for (auto pair : states)
+		{
+			file << pair.first << " ";
+			for (float qv : pair.second)
+				file << qv << " ";
+			file << std::endl;
+		}
+	}
+	void	importModel(const std::string &path)
+	{
+		std::ifstream	file(path);
+		if (!file.is_open())
+			return ;
+		
+		states.clear();
+
+		std::string	line;
+		while (std::getline(file, line))
+		{
+			std::istringstream	iss(line);
+
+			StateHash	hash;
+			float		f1;
+			float		f2;
+			float		f3;
+			float		f4;
+
+			if (!(iss >> hash >> f1 >> f2 >> f3 >> f4))
+			{
+				std::cerr << "parsing error" << std::endl;
+				continue ;
+			}
+			states[hash][0] = f1;
+			states[hash][1] = f2;
+			states[hash][2] = f3;
+			states[hash][3] = f4;
+		}
+	}
 };
 
 float	randf()
@@ -193,7 +238,7 @@ class	Agent
 			}
 			else
 			{
-				action = _QTable.get_best_action_for_state(state.hash(), !_learning);
+				action = _QTable.get_best_action_for_state(state.hash());
 			}
 
 			_last_state = state.hash();
@@ -202,10 +247,21 @@ class	Agent
 		}
 		void	reward(StateHash next_state, float reward)
 		{
+			if (!_learning)
+				return ;
+
 			_QTable.update_q_value(_last_state, next_state, _last_action, reward);
 		}
 
 		bool		_learning = true;
+		void	exportModel(const std::string &path)
+		{
+			_QTable.exportModel(path);
+		}
+		void	importModel(const std::string &path)
+		{
+			_QTable.importModel(path);
+		}
 	private:
 		QTable		_QTable;
 
