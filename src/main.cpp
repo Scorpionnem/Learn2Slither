@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 19:29:11 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/06 14:53:03 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,11 +87,17 @@ class	SnakeGame
 			if (_checkFood())
 			{
 				_snake->grow();
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
+				_generateFood();
 				return (Event::GROW_SNAKE);
 			}
 			if (_checkBadFood())
 			{
 				_snake->shrink();
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
+				_generateBadFood();
+				if (_snake->size() == 0)
+					return (Event::DEATH);
 				return (Event::SHRINK_SNAKE);
 			}
 
@@ -110,8 +116,10 @@ class	SnakeGame
 
 			_spawnSnake();
 
-			// _generateFood();
-			// _generateFood();
+			_generateFood();
+			_generateFood();
+
+			_generateBadFood();
 
 			_dead = false;
 		}
@@ -130,10 +138,22 @@ class	SnakeGame
 					if (_snake->hasPart(Vec2i(x, y)))
 						std::cout << Color::Green << (char)_snake->getPart(Vec2i(x, y)).part << Color::Reset;
 					else
-						std::cout << (char)_getTile(Vec2i(x, y));
+					{
+						Tile	tile = _getTile(Vec2i(x, y));
+						if (tile == Tile::GREEN_APPLE)
+							std::cout << Color::Cyan;
+						if (tile == Tile::RED_APPLE)
+							std::cout << Color::Red;
+						std::cout << (char)tile;
+						std::cout << Color::Reset;
+					}
 				}
 				std::cout << std::endl;
 			}
+		}
+		int	getSnakeSize()
+		{
+			return (_snake->size());
 		}
 	private:
 		bool	_checkFood()
@@ -144,10 +164,14 @@ class	SnakeGame
 		}
 		bool	_checkBadFood()
 		{
+			if (_getTileNoSnake(_snake->getHead().pos) == Tile::RED_APPLE)
+				return (true);
 			return (false);
 		}
 		bool	_checkDeath()
 		{
+			if (_snake->size() == 0)
+				return (true);
 			if (!_isInBounds(_snake->getHead().pos))
 				return (true);
 			if (_getTileNoSnake(_snake->getHead().pos) == Tile::WALL)
@@ -197,6 +221,10 @@ class	SnakeGame
 		void	_generateFood()
 		{
 			_setTile(Tile::GREEN_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
+		}
+		void	_generateBadFood()
+		{
+			_setTile(Tile::RED_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
 		}
 		void	_spawnSnake()
 		{
@@ -249,41 +277,53 @@ class	Game
 			_game.reset();
 
 			bool	running = true;
-			_agent.setTraining(training);
+			int		it = 0;
+			int		last_food_it = 0;
 			while (running)
 			{
+				if (print) _agent._learning = false;
 				if (print) std::cout << Color::Cyan << "VVVVVV" << Color::Reset << std::endl;
 
 				std::string	upView, downView, leftView, rightView;
 				_game.getSnakeVision(upView, downView, leftView, rightView);
 
-				Action	action = _agent.process(upView, downView, leftView, rightView);
+				Direction	action = _agent.process(upView, downView, leftView, rightView);
 
-				if (print) std::cout << "Agent: " << action.dir << " decision had a value of " << action.value << std::endl;
-				_game.setSnakeDir(action.dir);
+				if (print) std::cout << "Agent: " << action << std::endl;
+				_game.setSnakeDir(action);
 
 				SnakeGame::Event	event = _game.update();
-				
+
+				_game.getSnakeVision(upView, downView, leftView, rightView);
+				State state(upView, downView, leftView, rightView);
+
 				if (print) std::cout << "Event: " << event << std::endl;
+				if (print) std::cout << "Size: " << _game.getSnakeSize() << std::endl;
+				if (print) std::cout << "Biggest " << _maxSizeTotal << std::endl;
 				if (print) _game.printMap();
 
 				switch (event)
 				{
 					case SnakeGame::Event::DEATH:
-						_agent.reward(-100); running = false; break;
+						_agent.reward(state.hash(), -100); running = false; break;
 					case SnakeGame::Event::GROW_SNAKE:
-						_agent.reward(100); break;
+						_agent.reward(state.hash(), 100); last_food_it = it; break;
 					case SnakeGame::Event::SHRINK_SNAKE:
-						_agent.reward(-10); break;
+						_agent.reward(state.hash(), -10); break;
 					case SnakeGame::Event::NONE:
-						_agent.reward(-0.1); break;
+						_agent.reward(state.hash(), -1); break;
 				}
 
 				if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
 				if (print) usleep(stepTime * 1000000);
+				it++;
 			}
+			if (_game.getSnakeSize() > _maxSizeTotal)
+				_maxSizeTotal = _game.getSnakeSize();
 		}
 	private:
+		int			_maxSizeTotal = 0;
+
 		Agent		_agent;
 		SnakeGame	_game;
 };

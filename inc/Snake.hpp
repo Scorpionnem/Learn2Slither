@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 18:39:52 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/06 14:17:27 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,6 +73,10 @@ class	Snake
 		void	grow()
 		{
 			_parts.push_back(SnakePart(Tile::SNAKE_BODY, lastTailDir, lastTailPos));
+		}
+		int	size()
+		{
+			return (_parts.size());
 		}
 		void	shrink()
 		{

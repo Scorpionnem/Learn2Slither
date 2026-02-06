@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 19:18:44 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/06 14:56:47 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,11 +85,6 @@ struct	State
 	bool		food_left = false;
 	bool		food_right = false;
 
-	/*
-		Hashes the state in a u16
-               DU DD DL DR FU FD FL FR DIR
-		000000 0  0  0  0  0  0  0  0  00
-	*/
 	StateHash	hash()
 	{
 		StateHash	res = 0;
@@ -124,10 +119,55 @@ struct	Action
 	float		value = 0;
 };
 
+#include <array>
+
 struct QTable
 {
-	std::unordered_map<StateHash, std::pair<float, Action>>	states;
+	float	learning_rate = 0.8;
+	float	discount_factor = 0.95;
+	float	exploration_prob = 0.2;
+
+	void	update_q_value(StateHash state, StateHash next_state, Direction action, float reward)
+	{
+		float	&q_value = states[state][static_cast<int>(action)];
+	
+		q_value += learning_rate * (reward + discount_factor * get_max_qv_for_state(next_state) - q_value);
+	}
+
+	float	get_max_qv_for_state(StateHash state)
+	{
+		std::array<float, 4>	&actions = states[state];
+		float	max = actions[0];
+
+		for (int i = 0; i < 4; i++)
+			if (actions[i] > max)
+				max = actions[i] > max;
+		return (max);
+	}
+	Direction	get_best_action_for_state(StateHash state, bool print)
+	{
+		std::array<float, 4>	&actions = states[state];
+		float	max = actions[0];
+		int		maxi = 0;
+
+		for (int i = 0; i < 4; i++)
+			if (actions[i] > max)
+			{
+				maxi = i;
+				max = actions[i] > max;
+			}
+		if (print)
+			std::cout << "value " << max << std::endl;
+		return (static_cast<Direction>(maxi));
+	}
+
+	std::unordered_map<StateHash, std::array<float, 4>>	states;
 };
+
+float	randf()
+{
+	return (rand() / (float)RAND_MAX);
+}
 
 /*
 	On each update the view of the snake is given to the agent, it returns its action.
@@ -141,60 +181,34 @@ class	Agent
 		Agent() {}
 		~Agent() {}
 
-		Action	process(const std::string &upView, const std::string &downView,
+		Direction	process(const std::string &upView, const std::string &downView,
 						const std::string &leftView, const std::string &rightView)
 		{
 			State state(upView, downView, leftView, rightView);
+			Direction	action = Direction::DOWN;
 
-			_lastStateProcessed = state.hash();
-
-			auto	find = _QTable.states.find(_lastStateProcessed);
-			if ((_training && rand() % 10 < 3) || find == _QTable.states.end())
+			if (_learning && randf() <= _QTable.exploration_prob)
 			{
-				Action	action = Action(Direction(rand() % 4));
-
-				_lastActionTaken = action;
-
-				lastVal = -42;
-				return (action);
+				action = static_cast<Direction>(rand() % 4);
+			}
+			else
+			{
+				action = _QTable.get_best_action_for_state(state.hash(), !_learning);
 			}
 
-			lastVal = find->second.first;
-			_lastActionTaken = find->second.second;
-			return (find->second.second);
+			_last_state = state.hash();
+			_last_action = action;
+			return (_last_action);
 		}
-		void	reward(float reward)
+		void	reward(StateHash next_state, float reward)
 		{
-			auto	find = _QTable.states.find(_lastStateProcessed);
-
-			if (find == _QTable.states.end())
-			{
-				// std::cout << "wow thats new " <<  reward << std::endl;
-
-				_QTable.states[_lastStateProcessed].second = _lastActionTaken;
-				_QTable.states[_lastStateProcessed].first = reward;
-				_QTable.states[_lastStateProcessed].second.value = reward;
-				return ;
-			}
-			if (find->second.first < reward)
-			{
-				// std::cout << "wow thats better " <<  reward << " " << find->second.first << std::endl;
-
-				find->second.second = _lastActionTaken;
-				find->second.first = reward;
-				find->second.second.value = reward;
-			}
+			_QTable.update_q_value(_last_state, next_state, _last_action, reward);
 		}
-		float	getStateVal()
-		{
-			return (lastVal);
-		}
-		void	setTraining(bool state) {_training = state;}
+
+		bool		_learning = true;
 	private:
 		QTable		_QTable;
-		float	lastVal = -42;
-		bool	_training = true;
 
-		Action		_lastActionTaken;
-		StateHash	_lastStateProcessed;
+		Direction	_last_action;
+		StateHash	_last_state;
 };
