@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 23:09:25 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 23:24:49 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -319,6 +319,8 @@ inline std::ostream& operator<<(std::ostream& os, const SnakeGame::Event& p)
 	return (os);
 }
 
+std::vector<int>	lengths;
+
 class	Game
 {
 	public:
@@ -345,6 +347,7 @@ class	Game
 
 				std::string	upView, downView, leftView, rightView;
 				_game.getSnakeVision(upView, downView, leftView, rightView);
+				State prevstate(upView, downView, leftView, rightView);
 
 				if (print) std::cout << Direction::UP << " " << upView << std::endl;
 				if (print) std::cout << Direction::DOWN << " " << downView << std::endl;
@@ -371,7 +374,7 @@ class	Game
 				switch (event)
 				{
 					case SnakeGame::Event::DEATH:
-						_agent.reward(0, -100); running = false; break;
+						_agent.reward(prevstate.hash(), -100); running = false; break;
 					case SnakeGame::Event::GROW_SNAKE:
 						_agent.reward(state.hash(), 100); no_eat = 0; break;
 					case SnakeGame::Event::SHRINK_SNAKE:
@@ -390,6 +393,7 @@ class	Game
 			}
 			if (_game.getSnakeSize() > _maxSizeTotal)
 				_maxSizeTotal = _game.getSnakeSize();
+			lengths.push_back(_game.getSnakeSize());
 			return (true);
 		}
 		void	exportModel(const std::string &path)
@@ -519,5 +523,14 @@ int	main(int ac, char **av)
 			break ;
 	if (train)
 		game.exportModel(export_path);
+
+	if (lengths.size())
+	{
+		int	avg = 0;
+		for (int len : lengths)
+			avg += len;
+		avg /= lengths.size();
+		std::cout << "Average length " << avg << std::endl;
+	}
 	return (0);
 }

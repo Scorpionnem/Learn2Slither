@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:49:43 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 23:39:15 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,12 +127,12 @@ struct QTable
 {
 	float	learning_rate = 0.8;
 	float	discount_factor = 0.95;
-	float	exploration_prob = 0.4;
+	float	exploration_prob = 0.2;
 
 	void	update_q_value(StateHash state, StateHash next_state, Direction action, float reward)
 	{
 		float	&q_value = states[state][static_cast<int>(action)];
-	
+
 		q_value += learning_rate * (reward + discount_factor * get_max_qv_for_state(next_state) - q_value);
 	}
 
@@ -162,7 +162,7 @@ struct QTable
 	}
 
 	std::unordered_map<StateHash, std::array<float, 4>>	states;
-	
+
 	void	exportModel(const std::string &path)
 	{
 		std::ofstream	file(path);
@@ -171,7 +171,7 @@ struct QTable
 			std::cerr << "Failed to open " << path << std::endl;
 			return ;
 		}
-		
+
 		std::cout << "Exporting model in " << path << std::endl;
 
 		for (auto pair : states)
@@ -190,7 +190,7 @@ struct QTable
 			std::cerr << "Failed to open " << path << std::endl;
 			return ;
 		}
-		
+
 		std::cout << "Importing model from " << path << std::endl;
 
 		states.clear();
