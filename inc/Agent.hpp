@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/06 17:03:29 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:21:36 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -167,7 +167,10 @@ struct QTable
 	{
 		std::ofstream	file(path);
 		if (!file.is_open())
+		{
+			std::cerr << "Failed to open " << path << std::endl;
 			return ;
+		}
 		
 		for (auto pair : states)
 		{
@@ -181,7 +184,10 @@ struct QTable
 	{
 		std::ifstream	file(path);
 		if (!file.is_open())
+		{
+			std::cerr << "Failed to open " << path << std::endl;
 			return ;
+		}
 		
 		states.clear();
 

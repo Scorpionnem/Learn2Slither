@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/06 17:21:57 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:25:43 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -348,20 +348,81 @@ class	Game
 };
 
 #include <ctime>
-int	main(void)
+#include <map>
+
+void	print_help()
+{
+	std::cout << "usage: ./Learn2Slither [-h, -e, -i, -t, -E]" << std::endl << std::endl;
+	std::cout << "options:" << std::endl;
+	std::cout << "-h --help\tshow help message and exit" << std::endl;
+	std::cout << "-i --import\tpath of file to import agent's model (defaults to \"models/out.txt\")" << std::endl;
+	std::cout << "-e --export\tpath of file to export agent's model (only used with --train)" << std::endl;
+	std::cout << "-E --epochs\tnumber of epochs to train the model (only used with --train)" << std::endl;
+	std::cout << "-t --train\tactivates agent's training mode" << std::endl;
+}
+
+int	main(int ac, char **av)
 {
 	srand(std::time(NULL));
+
+	std::string	import_path;
+	std::string	export_path = "models/out.txt";
+	std::string	epochs_string = "1";
+	bool		help = false;
+	bool		train = false;
+
+	std::map<std::string, std::string&>	arg_options =	{{"--export", export_path}, {"-e", export_path},
+														 {"--import", import_path}, {"-i", import_path},
+														 {"--epochs", epochs_string}, {"-E", epochs_string}};
+
+	std::map<std::string, bool&>		bool_options =	{{"--help", help}, {"-h", help},
+														 {"--train", train}, {"-t", train}};
+
+	av++;
+	int	i = -1;
+	while (av[++i])
+	{
+		std::string	arg = av[i];
+		if (arg_options.find(arg) != arg_options.end())
+		{
+			if (!av[i + 1])
+			{
+				std::cerr << arg << " needs an argument" << std::endl;
+				return (1);
+			}
+			arg_options.find(arg)->second = av[i + 1];
+			i++;
+		}
+		else if (bool_options.find(arg) != bool_options.end())
+			bool_options.find(arg)->second = true;
+		else
+		{
+			std::cerr << "Unknown option (use --help)" << std::endl;
+			return (1);
+		}
+	}
+
+	if (help) { print_help(); return (0); }
+
 	Game	game(Vec2i(11, 11));
 
-	game.importModel("model.txt");
-	int	trainCycles = 50000;
-	for (int i = 0; i < trainCycles; i++)
+	if (!import_path.empty())
+		game.importModel(import_path);
+
+	if (train)
 	{
-		std::cout << '\r' << i << "/" << trainCycles;
-		game.simulateGame(false, true);
+		int	trainCycles = std::atoi(epochs_string.c_str());
+	
+		for (int i = 0; i < trainCycles; i++)
+		{
+			game.simulateGame(false, true);
+			std::cout << '\r' << i + 1 << "/" << trainCycles;
+		}
+		game.exportModel(export_path);
 	}
-	game.exportModel("models/50k11x11.txt");
-	while (1)
+	else
+	{
 		game.simulateGame(true, false, 0.1);
-	return (1);
+	}
+	return (0);
 }
