@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/01 19:18:44 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:49:43 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <cstdint>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 using u16 = uint16_t;
 using u8 = uint8_t;
@@ -85,11 +87,6 @@ struct	State
 	bool		food_left = false;
 	bool		food_right = false;
 
-	/*
-		Hashes the state in a u16
-               DU DD DL DR FU FD FL FR DIR
-		000000 0  0  0  0  0  0  0  0  00
-	*/
 	StateHash	hash()
 	{
 		StateHash	res = 0;
@@ -124,10 +121,108 @@ struct	Action
 	float		value = 0;
 };
 
+#include <array>
+
 struct QTable
 {
-	std::unordered_map<StateHash, std::pair<float, Action>>	states;
+	float	learning_rate = 0.8;
+	float	discount_factor = 0.95;
+	float	exploration_prob = 0.4;
+
+	void	update_q_value(StateHash state, StateHash next_state, Direction action, float reward)
+	{
+		float	&q_value = states[state][static_cast<int>(action)];
+	
+		q_value += learning_rate * (reward + discount_factor * get_max_qv_for_state(next_state) - q_value);
+	}
+
+	float	get_max_qv_for_state(StateHash state)
+	{
+		std::array<float, 4>	&actions = states[state];
+		float	max = actions[0];
+
+		for (int i = 0; i < 4; i++)
+			if (actions[i] > max)
+				max = actions[i] > max;
+		return (max);
+	}
+	Direction	get_best_action_for_state(StateHash state)
+	{
+		std::array<float, 4>	&actions = states[state];
+		float	max = actions[0];
+		int		maxi = 0;
+
+		for (int i = 0; i < 4; i++)
+			if (actions[i] > max)
+			{
+				maxi = i;
+				max = actions[i] > max;
+			}
+		return (static_cast<Direction>(maxi));
+	}
+
+	std::unordered_map<StateHash, std::array<float, 4>>	states;
+	
+	void	exportModel(const std::string &path)
+	{
+		std::ofstream	file(path);
+		if (!file.is_open())
+		{
+			std::cerr << "Failed to open " << path << std::endl;
+			return ;
+		}
+		
+		std::cout << "Exporting model in " << path << std::endl;
+
+		for (auto pair : states)
+		{
+			file << pair.first << " ";
+			for (float qv : pair.second)
+				file << qv << " ";
+			file << std::endl;
+		}
+	}
+	void	importModel(const std::string &path)
+	{
+		std::ifstream	file(path);
+		if (!file.is_open())
+		{
+			std::cerr << "Failed to open " << path << std::endl;
+			return ;
+		}
+		
+		std::cout << "Importing model from " << path << std::endl;
+
+		states.clear();
+
+		std::string	line;
+		while (std::getline(file, line))
+		{
+			std::istringstream	iss(line);
+
+			StateHash	hash;
+			float		f1;
+			float		f2;
+			float		f3;
+			float		f4;
+
+			if (!(iss >> hash >> f1 >> f2 >> f3 >> f4))
+			{
+				std::cerr << "parsing error" << std::endl;
+				continue ;
+			}
+			states[hash][0] = f1;
+			states[hash][1] = f2;
+			states[hash][2] = f3;
+			states[hash][3] = f4;
+		}
+	}
 };
+
+float	randf()
+{
+	return (rand() / (float)RAND_MAX);
+}
 
 /*
 	On each update the view of the snake is given to the agent, it returns its action.
@@ -141,60 +236,45 @@ class	Agent
 		Agent() {}
 		~Agent() {}
 
-		Action	process(const std::string &upView, const std::string &downView,
+		Direction	process(const std::string &upView, const std::string &downView,
 						const std::string &leftView, const std::string &rightView)
 		{
 			State state(upView, downView, leftView, rightView);
+			Direction	action = Direction::DOWN;
 
-			_lastStateProcessed = state.hash();
-
-			auto	find = _QTable.states.find(_lastStateProcessed);
-			if ((_training && rand() % 10 < 3) || find == _QTable.states.end())
+			if (_learning && randf() <= _QTable.exploration_prob)
 			{
-				Action	action = Action(Direction(rand() % 4));
-
-				_lastActionTaken = action;
-
-				lastVal = -42;
-				return (action);
+				action = static_cast<Direction>(rand() % 4);
+			}
+			else
+			{
+				action = _QTable.get_best_action_for_state(state.hash());
 			}
 
-			lastVal = find->second.first;
-			_lastActionTaken = find->second.second;
-			return (find->second.second);
+			_last_state = state.hash();
+			_last_action = action;
+			return (_last_action);
 		}
-		void	reward(float reward)
+		void	reward(StateHash next_state, float reward)
 		{
-			auto	find = _QTable.states.find(_lastStateProcessed);
-
-			if (find == _QTable.states.end())
-			{
-				// std::cout << "wow thats new " <<  reward << std::endl;
-
-				_QTable.states[_lastStateProcessed].second = _lastActionTaken;
-				_QTable.states[_lastStateProcessed].first = reward;
-				_QTable.states[_lastStateProcessed].second.value = reward;
+			if (!_learning)
 				return ;
-			}
-			if (find->second.first < reward)
-			{
-				// std::cout << "wow thats better " <<  reward << " " << find->second.first << std::endl;
 
-				find->second.second = _lastActionTaken;
-				find->second.first = reward;
-				find->second.second.value = reward;
-			}
+			_QTable.update_q_value(_last_state, next_state, _last_action, reward);
 		}
-		float	getStateVal()
+
+		bool		_learning = true;
+		void	exportModel(const std::string &path)
 		{
-			return (lastVal);
+			_QTable.exportModel(path);
 		}
-		void	setTraining(bool state) {_training = state;}
+		void	importModel(const std::string &path)
+		{
+			_QTable.importModel(path);
+		}
 	private:
 		QTable		_QTable;
-		float	lastVal = -42;
-		bool	_training = true;
 
-		Action		_lastActionTaken;
-		StateHash	_lastStateProcessed;
+		Direction	_last_action;
+		StateHash	_last_state;
 };

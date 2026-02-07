@@ -6,14 +6,11 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:26:45 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/02 11:21:11 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:52:44 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Window.hpp"
-#include <imgui.h>
-#include <backends/imgui_impl_sdl2.h>
-#include <backends/imgui_impl_sdlrenderer2.h>
 
 void	Window::open(uint32_t width, uint32_t height, const std::string &title)
 {
@@ -32,22 +29,10 @@ void	Window::open(uint32_t width, uint32_t height, const std::string &title)
 		throw (std::runtime_error(SDL_GetError()));
 	}
 	_renderer = SDL_CreateRenderer(_window, -1, 0);
-
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	io.ConfigFlags = ImGuiConfigFlags_NoMouseCursorChange;
-	(void)io;
-	ImGui::StyleColorsDark();
-
-	ImGui_ImplSDL2_InitForSDLRenderer(_window, _renderer);
-	ImGui_ImplSDLRenderer2_Init(_renderer);
 }
 
 void	Window::close()
 {
-	ImGui_ImplSDLRenderer2_Shutdown();
-	ImGui_ImplSDL2_Shutdown();
 	SDL_DestroyRenderer(_renderer);
 	SDL_DestroyWindow(_window);
 	SDL_Quit();
@@ -60,7 +45,6 @@ void	Window::pollEvents()
 	_events.reset();
 	while (SDL_PollEvent(&event))
 	{
-		ImGui_ImplSDL2_ProcessEvent(&event);
 		switch (event.type)
 		{
 			case SDL_QUIT:

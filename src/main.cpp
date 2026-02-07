@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/02 11:36:17 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 12:04:47 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,24 +15,20 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
-#include <algorithm>
 #include <cstdint>
 #include "Vec2.hpp"
 #include <bitset>
 #include "Snake.hpp"
 #include "Agent.hpp"
-
 #include "Window.hpp"
-#include <imgui.h>
-#include <backends/imgui_impl_sdl2.h>
-#include <backends/imgui_impl_sdlrenderer2.h>
+
+#define TILE_SIZE 64
 
 using u8 = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using i16 = int16_t;
 using i32 = int32_t;
-#define TILE_SIZE 64
 
 namespace Color
 {
@@ -74,7 +70,7 @@ class	SnakeGame
 		SnakeGame(Vec2i size)
 		{
 			_size = size;
-			reset();
+			_tiles.resize(_size.x * _size.y);
 		}
 		~SnakeGame() {}
 
@@ -93,13 +89,18 @@ class	SnakeGame
 
 			if (_checkFood())
 			{
-				_setTile(Tile::EMPTY, _snake->getHead().pos);
 				_snake->grow();
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
+				_generateFood(Tile::GREEN_APPLE);
 				return (Event::GROW_SNAKE);
 			}
 			if (_checkBadFood())
 			{
 				_snake->shrink();
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
+				_generateFood(Tile::RED_APPLE);
+				if (_snake->size() == 0)
+					return (Event::DEATH);
 				return (Event::SHRINK_SNAKE);
 			}
 
@@ -114,14 +115,14 @@ class	SnakeGame
 		}
 		void	reset()
 		{
-			_tiles.resize(_size.x * _size.y);
-
 			_generateWalls();
 
 			_spawnSnake();
 
-			_generateFood();
-			_generateFood();
+			_generateFood(Tile::GREEN_APPLE);
+			_generateFood(Tile::GREEN_APPLE);
+
+			_generateFood(Tile::RED_APPLE);
 
 			_dead = false;
 		}
@@ -131,7 +132,7 @@ class	SnakeGame
 			return (_snake->setDirection(dir));
 		}
 
-		void	printMap(SDL_Renderer *renderer)
+		void	renderMap(SDL_Renderer *renderer)
 		{
 			for (int y = 0; y < _size.y; y++)
 			{
@@ -150,20 +151,23 @@ class	SnakeGame
 						case Tile::EMPTY:
 							SDL_SetRenderDrawColor(renderer, 0,  0, 0, 1); break;
 						case Tile::SNAKE_BODY:
-							SDL_SetRenderDrawColor(renderer, 0,  255, 0, 1); break;
+							SDL_SetRenderDrawColor(renderer, 0,  169, 64, 1); break;
 						case Tile::SNAKE_HEAD:
-							SDL_SetRenderDrawColor(renderer, 0,  255, 64, 1); break;
+							SDL_SetRenderDrawColor(renderer, 0,  150, 64, 1); break;
 						case Tile::WALL:
 							SDL_SetRenderDrawColor(renderer, 128,  128, 128, 1); break;
 						case Tile::GREEN_APPLE:
-							SDL_SetRenderDrawColor(renderer, 64,  0, 255, 1); break;
+							SDL_SetRenderDrawColor(renderer, 64,  167, 0, 1); break;
 						case Tile::RED_APPLE:
-							SDL_SetRenderDrawColor(renderer, 255,  0, 0, 1); break;
+							SDL_SetRenderDrawColor(renderer, 167,  0, 0, 1); break;
 					}
 					SDL_RenderFillRect(renderer, &rectangle);
 				}
-				std::cout << std::endl;
 			}
+		}
+		int	getSnakeSize()
+		{
+			return (_snake->size());
 		}
 	private:
 		bool	_checkFood()
@@ -174,10 +178,14 @@ class	SnakeGame
 		}
 		bool	_checkBadFood()
 		{
+			if (_getTileNoSnake(_snake->getHead().pos) == Tile::RED_APPLE)
+				return (true);
 			return (false);
 		}
 		bool	_checkDeath()
 		{
+			if (_snake->size() == 0)
+				return (true);
 			if (!_isInBounds(_snake->getHead().pos))
 				return (true);
 			if (_getTileNoSnake(_snake->getHead().pos) == Tile::WALL)
@@ -224,13 +232,26 @@ class	SnakeGame
 			return (_tiles[pos.x + pos.y * _size.x]);
 		}
 
-		void	_generateFood()
+		void	_generateFood(Tile type)
 		{
-			_setTile(Tile::GREEN_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
+			while (1)
+			{
+				Vec2i	pos = Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1);
+				if (_getTile(pos) == Tile::EMPTY)
+				{
+					_setTile(type, pos);
+					break ;
+				}
+			}
+		}
+		void	_generateBadFood()
+		{
+			_setTile(Tile::RED_APPLE, Vec2i(rand() % (_size.x - 2) + 1, rand() % (_size.y - 2) + 1));
 		}
 		void	_spawnSnake()
 		{
-			_snake = std::make_unique<Snake>(Direction::RIGHT, _size / 2, 2);
+			Vec2i	spawnPos = _size / 2;
+			_snake = std::make_unique<Snake>(Direction::RIGHT, spawnPos, 2);
 		}
 		void	_generateWalls()
 		{
@@ -272,152 +293,186 @@ inline std::ostream& operator<<(std::ostream& os, const SnakeGame::Event& p)
 class	Game
 {
 	public:
-		Game(Vec2i size) : _game(size)
-		{
-			_size = size;
-		}
+		Game(Vec2i size) : _game(size) {}
 
-		void	start()
-		{
-			_window.open(_size.x * TILE_SIZE, _size.y * TILE_SIZE, "Learn2Slither");
-
-			while (_running)
-			{
-				_window.pollEvents();
-
-				ImGui_ImplSDLRenderer2_NewFrame();
-				ImGui_ImplSDL2_NewFrame();
-				ImGui::NewFrame();
-				///////////////////////
-
-				const Window::Events	&events = _window.getEvents();
-
-				if (events.getKey(SDLK_ESCAPE))
-					_running = false;
-
-				updateTraining();
-				showInfos();
-
-				///////////////////
-				ImGui::Render();
-				ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), _window.getRendererPtr());
-				_window.display();
-			}
-		}
-		void	updateTraining()
-		{
-			ImGui::Begin("Snake");
-			ImGui::InputInt("Sessions", &_trainingSessions);
-			_trainingSessions = std::clamp(_trainingSessions, 1, 10000000);
-			ImGui::Checkbox("Render", &_renderTraining);
-			ImGui::SameLine();
-			ImGui::Checkbox("Learn", &_learning);
-
-			if (ImGui::Button("Start"))
-				startTraining();
-			ImGui::SameLine();
-			if (ImGui::Button("Stop"))
-				stopTraining();
-			ImGui::End();
-
-			if (_training)
-				stepTraining();
-		}
-		void	showInfos()
-		{
-			ImGui::Begin("Infos");
-			ImGui::Text("Sessions Done %d", _trainingSessionsDoneTotal);
-			ImGui::End();
-		}
-		void	startTraining()
-		{
-			if (_training)
-				return ;
-			_training = true;
-			_trainingSessionsDone = 0;
-			startGame(_learning);
-		}
-		void	stopTraining()
-		{
-			if (!_training)
-				return ;
-			_training = false;
-		}
-		void	stepTraining()
-		{
-			if (!_gameRunning)
-				startGame(_learning);
-			stepGame(_renderTraining, 0.1 * _renderTraining);
-			if (!_gameRunning)
-			{
-				_trainingSessionsDone++;
-				_trainingSessionsDoneTotal++;
-				if (_trainingSessionsDone >= _trainingSessions)
-					_training = false;
-			}
-		}
-		void	startGame(bool training)
+		bool	simulateGame(Window &window, bool print, bool visualize, bool training, float stepTime = 0.1)
 		{
 			_game.reset();
-			_agent.setTraining(training);
-			_gameRunning = true;
-		}
-		void	stepGame(bool print, float stepTime = 0.1)
-		{
-			if (print) std::cout << Color::Cyan << "VVVVVV" << Color::Reset << std::endl;
 
-			std::string	upView, downView, leftView, rightView;
-			_game.getSnakeVision(upView, downView, leftView, rightView);
-
-			Action	action = _agent.process(upView, downView, leftView, rightView);
-
-			if (print) std::cout << "Agent: " << action.dir << " decision had a value of " << action.value << std::endl;
-			_game.setSnakeDir(action.dir);
-
-			SnakeGame::Event	event = _game.update();
-			
-			if (print) std::cout << "Event: " << event << std::endl;
-			if (print) _game.printMap(_window.getRendererPtr());
-
-			switch (event)
+			bool	running = true;
+			int	no_eat = 0;
+			_agent._learning = training;
+			while (running)
 			{
-				case SnakeGame::Event::DEATH:
-					_agent.reward(-100); _gameRunning = false; break;
-				case SnakeGame::Event::GROW_SNAKE:
-					_agent.reward(100); break;
-				case SnakeGame::Event::SHRINK_SNAKE:
-					_agent.reward(-10); break;
-				case SnakeGame::Event::NONE:
-					_agent.reward(-0.1); break;
-			}
+				window.pollEvents();
 
-			if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
-			if (print) usleep(stepTime * 1000000);
+				std::string	upView, downView, leftView, rightView;
+				_game.getSnakeVision(upView, downView, leftView, rightView);
+
+				if (print) std::cout << Direction::UP << " " << upView << std::endl;
+				if (print) std::cout << Direction::DOWN << " " << downView << std::endl;
+				if (print) std::cout << Direction::LEFT << " " << leftView << std::endl;
+				if (print) std::cout << Direction::RIGHT << " " << rightView << std::endl;
+				Direction	action = _agent.process(upView, downView, leftView, rightView);
+
+				if (print) std::cout << "Agent: " << action << std::endl;
+				_game.setSnakeDir(action);
+
+				SnakeGame::Event	event = _game.update();
+
+				_game.getSnakeVision(upView, downView, leftView, rightView);
+				State state(upView, downView, leftView, rightView);
+
+				if (print) std::cout << "Event: " << event << std::endl;
+				if (print) std::cout << "Size: " << _game.getSnakeSize() << std::endl;
+				if (print) std::cout << "Biggest " << _maxSizeTotal << std::endl;
+				if (print) std::cout << "State " << state.hash() << std::endl;
+
+				if (visualize) _game.renderMap(window.getRendererPtr());
+
+				switch (event)
+				{
+					case SnakeGame::Event::DEATH:
+						_agent.reward(0, -100); running = false; break;
+					case SnakeGame::Event::GROW_SNAKE:
+						_agent.reward(state.hash(), 100); no_eat = 0; break;
+					case SnakeGame::Event::SHRINK_SNAKE:
+						_agent.reward(state.hash(), -10); break;
+					case SnakeGame::Event::NONE:
+						_agent.reward(state.hash(), -1); break;
+				}
+
+				if (!training) usleep(stepTime * 1000000);
+
+				if (!training && no_eat++ > 64)
+					break ;
+				if (window.getEvents().getKey(SDLK_ESCAPE))
+					return (false);
+
+				window.display();
+				if (print) std::cout << std::endl;
+			}
+			if (_game.getSnakeSize() > _maxSizeTotal)
+				_maxSizeTotal = _game.getSnakeSize();
+			return (true);
+		}
+		void	exportModel(const std::string &path)
+		{
+			_agent.exportModel(path);
+		}
+		void	importModel(const std::string &path)
+		{
+			_agent.importModel(path);
 		}
 	private:
-		int			_trainingSessions = 1;
-		int			_trainingSessionsDone = 0;
-		int			_trainingSessionsDoneTotal = 0;
-		bool		_renderTraining = true;
-		bool		_training = false;
-		bool		_learning = false;
+		int			_maxSizeTotal = 0;
 
-		bool		_gameRunning = false;
-
-		Window		_window;
-		bool		_running = true;
 		Agent		_agent;
 		SnakeGame	_game;
-		Vec2i		_size;
 };
 
 #include <ctime>
-int	main(void)
+#include <map>
+
+void	print_help()
+{
+	std::cout << "usage: ./Learn2Slither [-h, -e, -i, -t, -E]" << std::endl << std::endl;
+	std::cout << "options:" << std::endl;
+	std::cout << "-h --help\tshow help message and exit" << std::endl;
+	std::cout << "-i --import\tpath of file to import agent's model (defaults to \"models/out.txt\")" << std::endl;
+	std::cout << "-e --export\tpath of file to export agent's model (only used with --train)" << std::endl;
+	std::cout << "-E --epochs\tnumber of epochs to train/test the model" << std::endl;
+	std::cout << "-t --train\tactivates agent's training mode" << std::endl;
+	std::cout << "-W --width\tchange map's width" << std::endl;
+	std::cout << "-H --height\tchange map's height" << std::endl;
+	std::cout << "-v --visualize\topen window to show the board" << std::endl;
+	std::cout << "-p --print\tprint model's vision and decisions" << std::endl;
+}
+
+int	main(int ac, char **av)
 {
 	srand(std::time(NULL));
-	
-	Game	game(Vec2i(11, 11));
 
-	game.start();
-	return (1);
+	std::string	import_path;
+	std::string	export_path = "models/out.txt";
+	int			epochs = 1;
+	int			width = 11;
+	int			height = 11;
+	bool		help = false;
+	bool		train = false;
+	bool		print = false;
+	bool		visualize = false;
+
+	std::map<std::string, std::string&>	arg_options =	{{"--export", export_path}, {"-e", export_path},
+														 {"--import", import_path}, {"-i", import_path},};
+
+	std::map<std::string, int&>	int_options =			{{"--epochs", epochs}, {"-E", epochs},
+														 {"--width", width}, {"-W", width},
+														 {"--height", height}, {"-H", height}};
+
+	std::map<std::string, bool&>		bool_options =	{{"--help", help}, {"-h", help},
+														 {"--visualize", visualize}, {"-v", visualize},
+														 {"--print", print}, {"-p", print},
+														 {"--train", train}, {"-t", train}};
+
+	av++;
+	int	i = -1;
+	while (av[++i])
+	{
+		std::string	arg = av[i];
+		if (arg_options.find(arg) != arg_options.end())
+		{
+			if (!av[i + 1])
+			{
+				std::cerr << arg << " needs an argument" << std::endl;
+				return (1);
+			}
+			arg_options.find(arg)->second = av[i + 1];
+			i++;
+		}
+		else if (int_options.find(arg) != int_options.end())
+		{
+			if (!av[i + 1])
+			{
+				std::cerr << arg << " needs an argument" << std::endl;
+				return (1);
+			}
+			int_options.find(arg)->second = std::atoi(av[i + 1]);
+			i++;
+		}
+		else if (bool_options.find(arg) != bool_options.end())
+			bool_options.find(arg)->second = true;
+		else
+		{
+			std::cerr << "Unknown option (use --help)" << std::endl;
+			return (1);
+		}
+	}
+
+	if (epochs <= 0 || (width <= 10 && width > 100) || (height > 100 && height <= 10))
+	{
+		std::cerr << "Invalid input" << std::endl;
+		return (1);
+	}
+
+	if (help) { print_help(); return (0); }
+
+	Window	window;
+
+	if (visualize)
+	{
+		window.open(width * TILE_SIZE, height * TILE_SIZE, "TROP BIEN LE SNAKE IL APPREND");
+	}
+
+	Game	game(Vec2i(width, height));
+
+	if (!import_path.empty())
+		game.importModel(import_path);
+
+	for (int i = 0; i < epochs; i++)
+		if (!game.simulateGame(window, print, visualize, train, 0.1 * visualize))
+			break ;
+	if (train)
+		game.exportModel(export_path);
+	return (0);
 }
