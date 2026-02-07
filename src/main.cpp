@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:45:44 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:50:27 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -427,6 +427,12 @@ int	main(int ac, char **av)
 			std::cerr << "Unknown option (use --help)" << std::endl;
 			return (1);
 		}
+	}
+
+	if (epochs <= 0 || (width <= 10 && width > 100) || (height > 100 && height <= 10))
+	{
+		std::cerr << "Invalid input" << std::endl;
+		return (1);
 	}
 
 	if (help) { print_help(); return (0); }

@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:21:36 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:49:43 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -172,6 +172,8 @@ struct QTable
 			return ;
 		}
 		
+		std::cout << "Exporting model in " << path << std::endl;
+
 		for (auto pair : states)
 		{
 			file << pair.first << " ";
@@ -189,6 +191,8 @@ struct QTable
 			return ;
 		}
 		
+		std::cout << "Importing model from " << path << std::endl;
+
 		states.clear();
 
 		std::string	line;
