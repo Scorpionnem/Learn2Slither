@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:25:43 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 11:45:44 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -281,20 +281,22 @@ class	Game
 	public:
 		Game(Vec2i size) : _game(size) {}
 
-		void	simulateGame(bool print, bool training, float stepTime = 0.1)
+		void	simulateGame(bool print, bool visualize, bool training, float stepTime = 0.1)
 		{
 			_game.reset();
 
 			bool	running = true;
 			int	no_eat = 0;
+			_agent._learning = training;
 			while (running)
 			{
-				if (print) _agent._learning = false;
-				if (print) std::cout << Color::Cyan << "VVVVVV" << Color::Reset << std::endl;
-
 				std::string	upView, downView, leftView, rightView;
 				_game.getSnakeVision(upView, downView, leftView, rightView);
 
+				if (print) std::cout << Direction::UP << " " << upView << std::endl;
+				if (print) std::cout << Direction::DOWN << " " << downView << std::endl;
+				if (print) std::cout << Direction::LEFT << " " << leftView << std::endl;
+				if (print) std::cout << Direction::RIGHT << " " << rightView << std::endl;
 				Direction	action = _agent.process(upView, downView, leftView, rightView);
 
 				if (print) std::cout << "Agent: " << action << std::endl;
@@ -309,7 +311,8 @@ class	Game
 				if (print) std::cout << "Size: " << _game.getSnakeSize() << std::endl;
 				if (print) std::cout << "Biggest " << _maxSizeTotal << std::endl;
 				if (print) std::cout << "State " << state.hash() << std::endl;
-				if (print) _game.printMap();
+
+				if (visualize) _game.printMap();
 
 				switch (event)
 				{
@@ -323,11 +326,12 @@ class	Game
 						_agent.reward(state.hash(), -1); break;
 				}
 
-				if (print) std::cout << Color::Cyan << "^^^^^^^^" << Color::Reset << std::endl << std::endl;
-				if (print) usleep(stepTime * 1000000);
+				if (!training) usleep(stepTime * 1000000);
 
 				if (!training && no_eat++ > 64)
 					break ;
+
+				if (print) std::cout << std::endl;
 			}
 			if (_game.getSnakeSize() > _maxSizeTotal)
 				_maxSizeTotal = _game.getSnakeSize();
@@ -357,8 +361,12 @@ void	print_help()
 	std::cout << "-h --help\tshow help message and exit" << std::endl;
 	std::cout << "-i --import\tpath of file to import agent's model (defaults to \"models/out.txt\")" << std::endl;
 	std::cout << "-e --export\tpath of file to export agent's model (only used with --train)" << std::endl;
-	std::cout << "-E --epochs\tnumber of epochs to train the model (only used with --train)" << std::endl;
+	std::cout << "-E --epochs\tnumber of epochs to train/test the model" << std::endl;
 	std::cout << "-t --train\tactivates agent's training mode" << std::endl;
+	std::cout << "-W --width\tchange map's width" << std::endl;
+	std::cout << "-H --height\tchange map's height" << std::endl;
+	std::cout << "-v --visualize\topen window to show the board" << std::endl;
+	std::cout << "-p --print\tprint model's vision and decisions" << std::endl;
 }
 
 int	main(int ac, char **av)
@@ -367,15 +375,24 @@ int	main(int ac, char **av)
 
 	std::string	import_path;
 	std::string	export_path = "models/out.txt";
-	std::string	epochs_string = "1";
+	int			epochs = 1;
+	int			width = 11;
+	int			height = 11;
 	bool		help = false;
 	bool		train = false;
+	bool		print = false;
+	bool		visualize = false;
 
 	std::map<std::string, std::string&>	arg_options =	{{"--export", export_path}, {"-e", export_path},
-														 {"--import", import_path}, {"-i", import_path},
-														 {"--epochs", epochs_string}, {"-E", epochs_string}};
+														 {"--import", import_path}, {"-i", import_path},};
+
+	std::map<std::string, int&>	int_options =			{{"--epochs", epochs}, {"-E", epochs},
+														 {"--width", width}, {"-W", width},
+														 {"--height", height}, {"-H", height}};
 
 	std::map<std::string, bool&>		bool_options =	{{"--help", help}, {"-h", help},
+														 {"--visualize", visualize}, {"-v", visualize},
+														 {"--print", print}, {"-p", print},
 														 {"--train", train}, {"-t", train}};
 
 	av++;
@@ -393,6 +410,16 @@ int	main(int ac, char **av)
 			arg_options.find(arg)->second = av[i + 1];
 			i++;
 		}
+		else if (int_options.find(arg) != int_options.end())
+		{
+			if (!av[i + 1])
+			{
+				std::cerr << arg << " needs an argument" << std::endl;
+				return (1);
+			}
+			int_options.find(arg)->second = std::atoi(av[i + 1]);
+			i++;
+		}
 		else if (bool_options.find(arg) != bool_options.end())
 			bool_options.find(arg)->second = true;
 		else
@@ -404,25 +431,24 @@ int	main(int ac, char **av)
 
 	if (help) { print_help(); return (0); }
 
-	Game	game(Vec2i(11, 11));
+	Game	game(Vec2i(width, height));
 
 	if (!import_path.empty())
 		game.importModel(import_path);
 
 	if (train)
 	{
-		int	trainCycles = std::atoi(epochs_string.c_str());
-	
-		for (int i = 0; i < trainCycles; i++)
+		for (int i = 0; i < epochs; i++)
 		{
-			game.simulateGame(false, true);
-			std::cout << '\r' << i + 1 << "/" << trainCycles;
+			game.simulateGame(print, visualize, true);
+			std::cout << '\r' << i + 1 << "/" << epochs;
 		}
 		game.exportModel(export_path);
 	}
 	else
 	{
-		game.simulateGame(true, false, 0.1);
+		for (int i = 0; i < epochs; i++)
+			game.simulateGame(print, visualize, false, 0.1);
 	}
 	return (0);
 }
