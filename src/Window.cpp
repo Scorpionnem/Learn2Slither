@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:26:45 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:52:44 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 22:38:32 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,8 @@ void	Window::open(uint32_t width, uint32_t height, const std::string &title)
 		throw (std::runtime_error(SDL_GetError()));
 	}
 	_renderer = SDL_CreateRenderer(_window, -1, 0);
+
+	SDL_SetWindowBordered(_window, SDL_FALSE);
 }
 
 void	Window::close()

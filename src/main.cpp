@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 12:04:47 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 22:44:22 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -140,12 +140,12 @@ class	SnakeGame
 				{
 					SDL_Rect rectangle = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
 					Tile	tile;
-					
+
 					if (_snake->hasPart(Vec2i(x, y)))
 						tile = _snake->getPart(Vec2i(x, y)).part;
 					else
 						tile = _getTile(Vec2i(x, y));
-					
+
 					switch (tile)
 					{
 						case Tile::EMPTY:
@@ -295,7 +295,7 @@ class	Game
 	public:
 		Game(Vec2i size) : _game(size) {}
 
-		bool	simulateGame(Window &window, bool print, bool visualize, bool training, float stepTime = 0.1)
+		bool	simulateGame(Window &window, bool print, bool visualize, bool step, bool training, float stepTime = 0.1)
 		{
 			_game.reset();
 
@@ -305,6 +305,14 @@ class	Game
 			while (running)
 			{
 				window.pollEvents();
+				if (window.getEvents().getKey(SDLK_ESCAPE))
+					return (false);
+				if (step && !window.getEvents().getKeyPressed(SDLK_SPACE))
+				{
+					_game.renderMap(window.getRendererPtr());
+					window.display();
+					continue ;
+				}
 
 				std::string	upView, downView, leftView, rightView;
 				_game.getSnakeVision(upView, downView, leftView, rightView);
@@ -346,8 +354,6 @@ class	Game
 
 				if (!training && no_eat++ > 64)
 					break ;
-				if (window.getEvents().getKey(SDLK_ESCAPE))
-					return (false);
 
 				window.display();
 				if (print) std::cout << std::endl;
@@ -376,7 +382,7 @@ class	Game
 
 void	print_help()
 {
-	std::cout << "usage: ./Learn2Slither [-h, -e, -i, -t, -E]" << std::endl << std::endl;
+	std::cout << "usage: ./Learn2Slither [-h, -i, -e, -E, -t, -W, -H, -v, -p]" << std::endl << std::endl;
 	std::cout << "options:" << std::endl;
 	std::cout << "-h --help\tshow help message and exit" << std::endl;
 	std::cout << "-i --import\tpath of file to import agent's model (defaults to \"models/out.txt\")" << std::endl;
@@ -387,6 +393,7 @@ void	print_help()
 	std::cout << "-H --height\tchange map's height" << std::endl;
 	std::cout << "-v --visualize\topen window to show the board" << std::endl;
 	std::cout << "-p --print\tprint model's vision and decisions" << std::endl;
+	std::cout << "-s --step\tactivate step by step mode (requires --visualize)" << std::endl;
 }
 
 int	main(int ac, char **av)
@@ -402,6 +409,7 @@ int	main(int ac, char **av)
 	bool		train = false;
 	bool		print = false;
 	bool		visualize = false;
+	bool		step = false;
 
 	std::map<std::string, std::string&>	arg_options =	{{"--export", export_path}, {"-e", export_path},
 														 {"--import", import_path}, {"-i", import_path},};
@@ -413,6 +421,7 @@ int	main(int ac, char **av)
 	std::map<std::string, bool&>		bool_options =	{{"--help", help}, {"-h", help},
 														 {"--visualize", visualize}, {"-v", visualize},
 														 {"--print", print}, {"-p", print},
+														 {"--step", step}, {"-s", step},
 														 {"--train", train}, {"-t", train}};
 
 	av++;
@@ -449,6 +458,12 @@ int	main(int ac, char **av)
 		}
 	}
 
+	if (step && !visualize)
+	{
+		std::cerr << "Step mode requires visualize option" << std::endl;
+		return (1);
+	}
+
 	if (epochs <= 0 || (width <= 10 && width > 100) || (height > 100 && height <= 10))
 	{
 		std::cerr << "Invalid input" << std::endl;
@@ -470,7 +485,7 @@ int	main(int ac, char **av)
 		game.importModel(import_path);
 
 	for (int i = 0; i < epochs; i++)
-		if (!game.simulateGame(window, print, visualize, train, 0.1 * visualize))
+		if (!game.simulateGame(window, print, visualize, step, train, 0.1 * visualize))
 			break ;
 	if (train)
 		game.exportModel(export_path);
