@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 22:44:22 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 23:09:25 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,10 +97,10 @@ class	SnakeGame
 			if (_checkBadFood())
 			{
 				_snake->shrink();
-				_setTile(Tile::EMPTY, _snake->getHead().pos);
-				_generateFood(Tile::RED_APPLE);
 				if (_snake->size() == 0)
 					return (Event::DEATH);
+				_setTile(Tile::EMPTY, _snake->getHead().pos);
+				_generateFood(Tile::RED_APPLE);
 				return (Event::SHRINK_SNAKE);
 			}
 
@@ -250,8 +250,37 @@ class	SnakeGame
 		}
 		void	_spawnSnake()
 		{
-			Vec2i	spawnPos = _size / 2;
-			_snake = std::make_unique<Snake>(Direction::RIGHT, spawnPos, 2);
+			Vec2i		spawnPos;
+			Direction	dir;
+			int			length = 2;
+			while (1)
+			{
+				spawnPos.x = rand() % _size.x;
+				spawnPos.y = rand() % _size.y;
+				dir = static_cast<Direction>(rand() % 4);
+				if (_canSpawnSnake(dir, spawnPos, length))
+					break ;
+			}
+			_snake = std::make_unique<Snake>(dir, spawnPos, length);
+		}
+		bool	_canSpawnSnake(Direction dir, Vec2i headPos, int length)
+		{
+			if (_getTileNoSnake(headPos) != Tile::EMPTY)
+				return (false);
+
+			Vec2i	body_dir = backward(dir);
+
+			for (int i = 0; i < length; i++)
+			{
+				Vec2i pos(
+					headPos.x + body_dir.x * (i + 1),
+					headPos.y + body_dir.y * (i + 1)
+				);
+
+				if (_getTileNoSnake(pos) != Tile::EMPTY)
+					return (false);
+			}
+			return (true);
 		}
 		void	_generateWalls()
 		{
@@ -328,7 +357,8 @@ class	Game
 
 				SnakeGame::Event	event = _game.update();
 
-				_game.getSnakeVision(upView, downView, leftView, rightView);
+				if (_game.getSnakeSize() != 0)
+					_game.getSnakeVision(upView, downView, leftView, rightView);
 				State state(upView, downView, leftView, rightView);
 
 				if (print) std::cout << "Event: " << event << std::endl;
@@ -464,7 +494,7 @@ int	main(int ac, char **av)
 		return (1);
 	}
 
-	if (epochs <= 0 || (width <= 10 && width > 100) || (height > 100 && height <= 10))
+	if (epochs <= 0 || (width < 8 && width > 100) || (height > 100 && height < 8))
 	{
 		std::cerr << "Invalid input" << std::endl;
 		return (1);

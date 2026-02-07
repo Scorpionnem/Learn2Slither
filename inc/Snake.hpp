@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/06 14:17:27 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 22:56:47 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,16 +45,35 @@ struct	SnakePart
 	}
 };
 
+Vec2i	backward(Direction dir)
+{
+	switch (dir)
+	{
+		case Direction::UP:    return (Vec2i(0, 1));
+		case Direction::DOWN:  return (Vec2i(0, -1));
+		case Direction::LEFT:  return (Vec2i(1, 0));
+		case Direction::RIGHT: return (Vec2i(-1, 0));
+	}
+	return Vec2i(0);
+}
+
 class	Snake
 {
 	public:
 		Snake(Direction dir, Vec2i headPos, int length)
 		{
 			_parts.push_back(SnakePart(Tile::SNAKE_HEAD, dir, headPos));
+
+			Vec2i	body_dir = backward(dir);
+
 			for (int i = 0; i < length; i++)
 			{
-				_parts.push_back(SnakePart(Tile::SNAKE_BODY, dir, Vec2i(headPos.x - (i + 1), headPos.y)));
-				// Push parts behind head
+				Vec2i pos(
+					headPos.x + body_dir.x * (i + 1),
+					headPos.y + body_dir.y * (i + 1)
+				);
+
+				_parts.push_back(SnakePart(Tile::SNAKE_BODY, dir, pos));
 			}
 		}
 		void	update() // Advances snake by 1
