@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 10:57:51 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 11:50:27 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/07 12:04:47 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,9 @@
 #include <bitset>
 #include "Snake.hpp"
 #include "Agent.hpp"
+#include "Window.hpp"
+
+#define TILE_SIZE 64
 
 using u8 = uint8_t;
 using u16 = uint16_t;
@@ -129,26 +132,37 @@ class	SnakeGame
 			return (_snake->setDirection(dir));
 		}
 
-		void	printMap()
+		void	renderMap(SDL_Renderer *renderer)
 		{
 			for (int y = 0; y < _size.y; y++)
 			{
 				for (int x = 0; x < _size.x; x++)
 				{
+					SDL_Rect rectangle = {x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+					Tile	tile;
+					
 					if (_snake->hasPart(Vec2i(x, y)))
-						std::cout << Color::Green << (char)_snake->getPart(Vec2i(x, y)).part << Color::Reset;
+						tile = _snake->getPart(Vec2i(x, y)).part;
 					else
+						tile = _getTile(Vec2i(x, y));
+					
+					switch (tile)
 					{
-						Tile	tile = _getTile(Vec2i(x, y));
-						if (tile == Tile::GREEN_APPLE)
-							std::cout << Color::Cyan;
-						if (tile == Tile::RED_APPLE)
-							std::cout << Color::Red;
-						std::cout << (char)tile;
-						std::cout << Color::Reset;
+						case Tile::EMPTY:
+							SDL_SetRenderDrawColor(renderer, 0,  0, 0, 1); break;
+						case Tile::SNAKE_BODY:
+							SDL_SetRenderDrawColor(renderer, 0,  169, 64, 1); break;
+						case Tile::SNAKE_HEAD:
+							SDL_SetRenderDrawColor(renderer, 0,  150, 64, 1); break;
+						case Tile::WALL:
+							SDL_SetRenderDrawColor(renderer, 128,  128, 128, 1); break;
+						case Tile::GREEN_APPLE:
+							SDL_SetRenderDrawColor(renderer, 64,  167, 0, 1); break;
+						case Tile::RED_APPLE:
+							SDL_SetRenderDrawColor(renderer, 167,  0, 0, 1); break;
 					}
+					SDL_RenderFillRect(renderer, &rectangle);
 				}
-				std::cout << std::endl;
 			}
 		}
 		int	getSnakeSize()
@@ -281,7 +295,7 @@ class	Game
 	public:
 		Game(Vec2i size) : _game(size) {}
 
-		void	simulateGame(bool print, bool visualize, bool training, float stepTime = 0.1)
+		bool	simulateGame(Window &window, bool print, bool visualize, bool training, float stepTime = 0.1)
 		{
 			_game.reset();
 
@@ -290,6 +304,8 @@ class	Game
 			_agent._learning = training;
 			while (running)
 			{
+				window.pollEvents();
+
 				std::string	upView, downView, leftView, rightView;
 				_game.getSnakeVision(upView, downView, leftView, rightView);
 
@@ -312,7 +328,7 @@ class	Game
 				if (print) std::cout << "Biggest " << _maxSizeTotal << std::endl;
 				if (print) std::cout << "State " << state.hash() << std::endl;
 
-				if (visualize) _game.printMap();
+				if (visualize) _game.renderMap(window.getRendererPtr());
 
 				switch (event)
 				{
@@ -330,11 +346,15 @@ class	Game
 
 				if (!training && no_eat++ > 64)
 					break ;
+				if (window.getEvents().getKey(SDLK_ESCAPE))
+					return (false);
 
+				window.display();
 				if (print) std::cout << std::endl;
 			}
 			if (_game.getSnakeSize() > _maxSizeTotal)
 				_maxSizeTotal = _game.getSnakeSize();
+			return (true);
 		}
 		void	exportModel(const std::string &path)
 		{
@@ -437,24 +457,22 @@ int	main(int ac, char **av)
 
 	if (help) { print_help(); return (0); }
 
+	Window	window;
+
+	if (visualize)
+	{
+		window.open(width * TILE_SIZE, height * TILE_SIZE, "TROP BIEN LE SNAKE IL APPREND");
+	}
+
 	Game	game(Vec2i(width, height));
 
 	if (!import_path.empty())
 		game.importModel(import_path);
 
+	for (int i = 0; i < epochs; i++)
+		if (!game.simulateGame(window, print, visualize, train, 0.1 * visualize))
+			break ;
 	if (train)
-	{
-		for (int i = 0; i < epochs; i++)
-		{
-			game.simulateGame(print, visualize, true);
-			std::cout << '\r' << i + 1 << "/" << epochs;
-		}
 		game.exportModel(export_path);
-	}
-	else
-	{
-		for (int i = 0; i < epochs; i++)
-			game.simulateGame(print, visualize, false, 0.1);
-	}
 	return (0);
 }

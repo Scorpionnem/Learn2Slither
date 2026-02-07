@@ -2,13 +2,14 @@ NAME :=	Learn2Slither
 
 CXX :=	c++
 CXXFLAGS :=	-g -MP -MMD # -Wall -Wextra -Werror -g -MP -MMD # -fsanitize=address -fno-omit-frame-pointer
-LFLAGS :=
+LFLAGS := -lSDL2
 
 ###
 
 INCLUDE_DIRS :=	inc/\
 
-SRCS :=	main
+SRCS :=	main\
+		Window
 
 ###
 
