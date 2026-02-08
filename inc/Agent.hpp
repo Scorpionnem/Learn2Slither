@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/08 13:40:24 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/08 16:14:01 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,14 +146,6 @@ struct QTable
 				max = actions[i];
 		return (max);
 	}
-	void	print_values_for_state(StateHash state)
-	{
-		std::cout
-		<< Direction::UP << " " << states[state][0] << " " << std::endl
-		<< Direction::DOWN << " " << states[state][1] << " " << std::endl
-		<< Direction::LEFT << " " << states[state][2] << " " << std::endl
-		<< Direction::RIGHT << " " << states[state][3] << std::endl;
-	}
 	Direction	get_best_action_for_state(StateHash state, float &reward)
 	{
 		std::array<float, 4>	&actions = states[state];
@@ -228,7 +220,7 @@ struct QTable
 	}
 };
 
-float	randf()
+inline float	randf()
 {
 	return (rand() / (float)RAND_MAX);
 }
@@ -271,14 +263,6 @@ class	Agent
 				return ;
 
 			_QTable.update_q_value(_last_state, next_state, _last_action, reward);
-		}
-		float	getLastReward()
-		{
-			return (_lastReward);
-		}
-		void	print_values()
-		{
-			_QTable.print_values_for_state(_last_state);
 		}
 
 		bool		_learning = true;

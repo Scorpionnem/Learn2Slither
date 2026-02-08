@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 11:55:12 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 22:56:47 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/08 15:21:44 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,7 @@ struct	SnakePart
 	}
 };
 
-Vec2i	backward(Direction dir)
+inline Vec2i	backward(Direction dir)
 {
 	switch (dir)
 	{

@@ -9,7 +9,8 @@ LFLAGS := -lSDL2
 INCLUDE_DIRS :=	inc/\
 
 SRCS :=	main\
-		Window
+		Window\
+		Game
 
 ###
 
