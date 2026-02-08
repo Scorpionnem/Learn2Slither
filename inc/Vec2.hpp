@@ -6,11 +6,13 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 11:25:23 by mbatty            #+#    #+#             */
-/*   Updated: 2026/01/31 19:04:42 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/08 13:51:14 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
+
+#include <cmath>
 
 template <typename T>
 struct	Vec2
@@ -43,9 +45,19 @@ struct	Vec2
 		return (x == v.x && y == v.y);
 	}
 
+	T	length()
+	{
+		return (std::sqrt(x * x + y * y));
+	}
+
 	T	x, y;
 };
 
 using Vec2i = Vec2<int>;
 using Vec2f = Vec2<float>;
 using Vec2d = Vec2<double>;
+
+float	distance(Vec2f v1, Vec2f v2)
+{
+	return ((v1 - v2).length());
+}

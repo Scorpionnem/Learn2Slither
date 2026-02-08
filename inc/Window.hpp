@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 10:26:11 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/02 10:43:47 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/08 12:44:34 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <map>
+#define TILE_SIZE 64
 
 class	Window
 {

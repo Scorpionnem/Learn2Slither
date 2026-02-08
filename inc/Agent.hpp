@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 18:59:38 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/07 23:39:15 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/08 13:40:24 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -143,10 +143,18 @@ struct QTable
 
 		for (int i = 0; i < 4; i++)
 			if (actions[i] > max)
-				max = actions[i] > max;
+				max = actions[i];
 		return (max);
 	}
-	Direction	get_best_action_for_state(StateHash state)
+	void	print_values_for_state(StateHash state)
+	{
+		std::cout
+		<< Direction::UP << " " << states[state][0] << " " << std::endl
+		<< Direction::DOWN << " " << states[state][1] << " " << std::endl
+		<< Direction::LEFT << " " << states[state][2] << " " << std::endl
+		<< Direction::RIGHT << " " << states[state][3] << std::endl;
+	}
+	Direction	get_best_action_for_state(StateHash state, float &reward)
 	{
 		std::array<float, 4>	&actions = states[state];
 		float	max = actions[0];
@@ -156,8 +164,9 @@ struct QTable
 			if (actions[i] > max)
 			{
 				maxi = i;
-				max = actions[i] > max;
+				max = actions[i];
 			}
+		reward = max;
 		return (static_cast<Direction>(maxi));
 	}
 
@@ -245,10 +254,11 @@ class	Agent
 			if (_learning && randf() <= _QTable.exploration_prob)
 			{
 				action = static_cast<Direction>(rand() % 4);
+				_lastReward = 0;
 			}
 			else
 			{
-				action = _QTable.get_best_action_for_state(state.hash());
+				action = _QTable.get_best_action_for_state(state.hash(), _lastReward);
 			}
 
 			_last_state = state.hash();
@@ -261,6 +271,14 @@ class	Agent
 				return ;
 
 			_QTable.update_q_value(_last_state, next_state, _last_action, reward);
+		}
+		float	getLastReward()
+		{
+			return (_lastReward);
+		}
+		void	print_values()
+		{
+			_QTable.print_values_for_state(_last_state);
 		}
 
 		bool		_learning = true;
@@ -277,4 +295,5 @@ class	Agent
 
 		Direction	_last_action;
 		StateHash	_last_state;
+		float		_lastReward = 0;
 };
