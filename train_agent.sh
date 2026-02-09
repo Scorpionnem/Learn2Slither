@@ -8,6 +8,5 @@ echo Starting training sessions
 ./Learn2Slither --export models/1000_11x11.txt --epochs 1000 --train
 ./Learn2Slither --export models/10000_11x11.txt --epochs 10000 --train
 ./Learn2Slither --export models/100000_11x11.txt --epochs 100000 --train
-./Learn2Slither --export models/1000000_11x11.txt --epochs 1000000 --train
 
 echo Finished training sessions!

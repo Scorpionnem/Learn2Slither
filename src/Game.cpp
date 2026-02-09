@@ -6,7 +6,7 @@
 /*   By: mbatty <mbatty@student.42angouleme.fr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/08 15:20:56 by mbatty            #+#    #+#             */
-/*   Updated: 2026/02/08 16:08:51 by mbatty           ###   ########.fr       */
+/*   Updated: 2026/02/09 10:57:22 by mbatty           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,9 +47,7 @@ bool	Game::simulateGame(Window &window, bool print, bool visualize, bool step, b
 		if (print) std::cout << Direction::LEFT << ": " << leftView << std::endl;
 		if (print) std::cout << Direction::RIGHT << ": " << rightView << std::endl << std::endl;
 
-		State state(upView, downView, leftView, rightView);
-
-		if (print) std::cout << "State: " << state.hash() << std::endl;
+		if (print) std::cout << "State: " << prevstate.hash() << std::endl;
 
 		action = _agent.process(upView, downView, leftView, rightView);
 		if (print) std::cout << std::endl << "Agent: " << action << std::endl << std::endl;
@@ -61,6 +59,9 @@ bool	Game::simulateGame(Window &window, bool print, bool visualize, bool step, b
 		Vec2i	prevHead = _game.getSnakeHeadPos();
 
 		SnakeGame::Event	event = _game.update();
+
+		_game.getSnakeVision(upView, downView, leftView, rightView);
+		State state(upView, downView, leftView, rightView);
 
 		if (print) std::cout << "Event: " << event << std::endl;
 		if (print) std::cout << "Size: " << _game.getSnakeSize() << std::endl;
